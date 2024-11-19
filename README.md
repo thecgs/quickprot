@@ -13,8 +13,7 @@ In running quickprot, protein alignment is done using [miniprot](https://github.
 wget https://github.com/thecgs/quickprot/archive/refs/tags/quickprot-v1.11.tar.gz
 tar -zxvf quickprot-v1.11.tar.gz
 cd quickprot-v1.11
-./quickprot -q protein.fasta -g genome.fasta
-
+./quickprot -h
 ```
 
 Note
