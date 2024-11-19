@@ -7,6 +7,18 @@ Before use, you need to install Python and Perl.
 
 Python3 >= 3.8, perl >= 5
 
+In running quickprot, protein alignment is done using [miniprot](https://github.com/lh3/miniprot/) (v0.12), and ORFs prediction is done using [TransDecoder](https://github.com/TransDecoder/TransDecoder) (v5.7.1). For ease of use, these two software are integrated into quickprot.
+
+```
+wget https://github.com/thecgs/quickprot/archive/refs/tags/quickprot-v1.11.tar.gz
+tar -zxvf quickprot-v1.11.tar.gz
+cd quickprot-v1.11
+./quickprot -q protein.fasta -g genome.fasta
+
+```
+
+Note
+
 ```
 # if you used --mask optional of qucikprot.py script, you has install biopython
 pip install biopython
@@ -14,7 +26,7 @@ pip install biopython
 # if you used sort_gff3.py script has install natsort.
 pip install natsort
 ```
-In running quickprot, protein alignment is done using [miniprot](https://github.com/lh3/miniprot/) (v0.12), and ORFs prediction is done using [TransDecoder](https://github.com/TransDecoder/TransDecoder) (v5.7.1). For ease of use, these two software are integrated into quickprot.
+
 
 ## Usage
 
@@ -27,7 +39,7 @@ To run quickprot, use
 quickprot optional
 
 ```
-$ ./quickprot.py -h
+./quickprot.py -h
 usage: quickprot.py -q str -g str [-p str] [-i float] [--outs float] [--overlap float] [-t int] [-G str] [-s] [-m] [-n] [-b] [-h] [-v]
 
 Quick genome annotation base on protein.
