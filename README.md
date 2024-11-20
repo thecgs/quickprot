@@ -26,6 +26,12 @@ pip install biopython
 pip install natsort
 ```
 
+## Algorithm
+
+![Schema of quickprot algorithm](./docs/Schema_of_quickprot_algorithm.png)
+
+Schema of quickprot algorithm
+
 
 ## Usage
 
