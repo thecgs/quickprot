@@ -28,10 +28,9 @@ pip install natsort
 
 ## Algorithm
 
-![Schema of quickprot algorithm]([./docs/Schema_of_quickprot_algorithm.png]#pic_center)
+![Schema of quickprot algorithm](./docs/Schema_of_quickprot_algorithm.png#pic_center)
 
-Schema of quickprot algorithm
-
+<center>Fig1. Schema of quickprot algorithm</center>
 
 ## Usage
 
