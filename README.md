@@ -1,13 +1,25 @@
-# Quick genome annotation base on protein (quickprot)
 
 
-## Installation
+# QuickProt User Guide
+
+
+
+##  What is quickprot？
+
+The quickprot algorithm is a homology-based method for predicting gene models across entire genomes, designed to rapidly construct a non-redundant set of gene models. As illustrated in Figure 1, its core principle is analogous to the blotting method. It primarily employs [miniprot](https://github.com/lh3/miniprot/) (v0.12), to align homologous protein sequences to the genome, delineates high-alignment regions to assemble pseudo-transcripts (lacking UTR regions), and predicts coding regions within these pseudo-transcripts using [TransDecoder](https://github.com/TransDecoder/TransDecoder) (v5.7.1). Subsequently, low-quality gene models are filtered out and chimeric gene models are dissected, ultimately generating a high-accuracy, non-redundant gene set.
+
+![Schema of quickprot algorithm](./docs/Schema_of_quickprot_algorithm.png#pic_center)
+
+<center>Fig1. Schema of quickprot algorithm</center>
+
+
+## Installation:
 
 Before use, you need to install Python and Perl.
 
 Python3 >= 3.8, perl >= 5
 
-In running quickprot, protein alignment is done using [miniprot](https://github.com/lh3/miniprot/) (v0.12), and ORFs prediction is done using [TransDecoder](https://github.com/TransDecoder/TransDecoder) (v5.7.1). For ease of use, these two software are integrated into quickprot.
+For ease of use, [miniprot](https://github.com/lh3/miniprot/) (v0.12) and  [TransDecoder](https://github.com/TransDecoder/TransDecoder) (v5.7.1)  software are integrated into quickprot.
 
 ```
 wget https://github.com/thecgs/quickprot/archive/refs/tags/quickprot-v1.11.tar.gz
@@ -16,67 +28,51 @@ cd quickprot-v1.11
 ./quickprot -h
 ```
 
-Note
+Note:
 
 ```
-# if you used --mask optional of qucikprot.py script, you has install biopython
+# if you need to use --mask optional of qucikprot.py script, and you need to install biopython
 pip install biopython
 
-# if you used sort_gff3.py script has install natsort.
+# if you need to use sort_gff3.py script, and you need to install natsort.
 pip install natsort
 ```
 
-## Algorithm
+## Usage:
 
-![Schema of quickprot algorithm](./docs/Schema_of_quickprot_algorithm.png#pic_center)
-
-<center>Fig1. Schema of quickprot algorithm</center>
-
-## Usage
-
-To run quickprot, use
+To  quickly  run quickprot software. like this, 
 
 ```
 ./quickprot -q protein.fasta -g genome.fasta
 ```
 
-quickprot optional
+This pipeline can improve busco missing result, but you need to download [compleasm](https://github.com/huangnengCSU/compleasm) software.
 
 ```
-./quickprot.py -h
-usage: quickprot.py -q str -g str [-p str] [-i float] [--outs float] [--overlap float] [-t int] [-G str] [-s] [-m] [-n] [-b] [-h] [-v]
+## step1 running quickprot software
+./quickprot.py -q protein.fasta -g genome.fasta -p quickprot.raw
 
-Quick genome annotation base on protein.
+## step2 running compleasm software
+compleasm.py run -a genome.fasta -o ./ -l your_lineage
 
-required arguments:
-  -q str, --query str   A file of query protein fasta format.
-  -g str, --genome str  A file of genome fasta format.
+## step3 to update raw gff3 of step1 from compleasm result
+./bin/update_gff3_from_minibusco.py -r quickprot.raw.longest.gff3 -m ./your_lineage/miniprot_output.gff -g genome.fasta -o improve_busco.gff3
 
-optional arguments:
-  -p str, --prefix str  Prefix of a output file. default=quickprot
-  -i float, --identity float
-                        Alignment identity (0-1). default=0.95
-  --outs float          Output score at least bestScore (0-1). default=0.99
-  --overlap float       If the overlap of predicted ORFs in a transcript is less than default value (0-1). default=0.8, 
-                        they will be dissected.
-  -t int, --thread int  Thread number of run miniprot sortware. defualt=24
-  -G str, --genetic_code str
-                        Genetic Codes (derived from: https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi). defualt=Universal
-                        The supported genetic codon tables are Acetabularia, Candida, Ciliate, Dasycladacean, Euplotid, Hexamita,
-                        Mesodinium, Mitochondrial-Ascidian, Mitochondrial-Chlorophycean, Mitochondrial-Echinoderm, Mitochondrial-Flatworm,
-                        Mitochondrial-Invertebrates, Mitochondrial-Protozoan, Mitochondrial-Pterobranchia, Mitochondrial-Scenedesmus_obliquus,
-                        Mitochondrial-Thraustochytrium, Mitochondrial-Trematode, Mitochondrial-Vertebrates, Mitochondrial-Yeast, 
-                        Pachysolen_tannophilus,Peritrich, SR1_Gracilibacteria, Tetrahymena, and Universal.
-  -s, --skip_align      Skip run miniprot step. default=False
-  -m, --mask            Soft-masked (dna_sm) genome convert to masked(dna_rm) genome. default=False
-  -n, --noclean         Do not delete intermediate files. default=False
-  -b, --single_best_only
-                        Retain only the single best orf per transcript. default=False
-                        It is not recommended to use it because when two reference proteins overlap during alignment, 
-                        it can lead to fusion during transcript assembly. If a transcript is not set with only one ORF,
-                        the fused ORF will be split in subsequent analysis.
-  -h, --help            Show program's help message and exit.
-  -v, --version         Show program's version number and exit.
+## step4 merge step1 and step3 gff3 result
+cat quickprot.raw.longest.gff3 improve_busco.gff3 > genome.longest.gff.tmp
 
-date:2024/11/19 author:guisen chen email:thecgs001@foxmail.com
+## step5 to sort by chromosomes or scaffold and gene start position and to rename gff3
+./bin/sort_gff3.py genome.longest.gff.tmp | ./bin/rename_gff3.py - -o genome.longest.gff3 -p QUICKPROT; rm genome.longest.gff.tmp
+
+## step6 extract protein sequence from genome and gff file
+./bin/TransDecoder-5.7.1/util/gff3_file_to_proteins.pl --gff3 genome.longest.gff3 --fasta genome.fasta --seqType prot  > genome.longest.pep.fasta
+
+## step7 extract protein sequence from genome and gff file
+./bin/TransDecoder-5.7.1/util/gff3_file_to_proteins.pl --gff3 genome.longest.gff3 --fasta genome.fasta --seqType CDS  > genome.longest.cds.fasta
 ```
+
+## Cite quickprot:
+
+If you use quickprot, please cite:
+
+> Guisen Chen, quickprot: a faster and more accurate homology-based protein annotation tools for whole genome.
