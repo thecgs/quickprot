@@ -75,4 +75,4 @@ cat quickprot.raw.longest.gff3 improve_busco.gff3 > genome.longest.gff.tmp
 
 If you use quickprot, please cite:
 
-> Guisen Chen, quickprot: a faster and more accurate homology-based protein annotation tools for whole genome.
+> Guisen Chen, QuickProt: A Fast and Accurate Homology-Based Protein Annotation Tool for Non-Model Organism Genomes.
