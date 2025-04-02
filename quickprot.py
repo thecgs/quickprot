@@ -39,6 +39,8 @@ Pachysolen_tannophilus,Peritrich, SR1_Gracilibacteria, Tetrahymena, and Universa
 It is not recommended to use it because when two reference proteins overlap during alignment, 
 it can lead to fusion during transcript assembly. If a transcript is not set with only one ORF,
 the fused ORF will be split in subsequent analysis.""")
+    optional.add_argument('-miniprot_PATH', '--miniprot_PATH', metavar='str', help="miniprot PATH default=auto.", default=None)
+    optional.add_argument('-TransDecoder_PATH', '--TransDecoder_PATH', metavar='str', help="TransDecoder PATH default=auto.", default=None)
     optional.add_argument('-h', '--help', action='help', help="Show program's help message and exit.")
     optional.add_argument('-v', '--version', action='version', version='v1.11', help="Show program's version number and exit.")
     args = parser.parse_args()
@@ -54,6 +56,41 @@ the fused ORF will be split in subsequent analysis.""")
     noclean = args.noclean
     outs = args.outs
     overlap = args.overlap
+    TransDecoder_PATH = args.TransDecoder_PATH
+    miniprot_PATH = args.miniprot_PATH
+    
+
+def check_dependencies(miniprot_PATH=None, TransDecoder_PATH=None):
+    if miniprot_PATH==None:
+        if os.path.exists(os.path.join(sys.path[0], 'bin/miniprot-0.12/miniprot')):
+            miniprot_PATH = os.path.join(sys.path[0], 'bin/miniprot-0.12/miniprot')
+        else:
+            for PATH in os.environ['PATH'].split(':'):
+                if os.path.exists(os.path.join(PATH, 'miniprot')):
+                    miniprot_PATH = os.path.join(PATH, 'miniprot')
+                    break
+
+        if miniprot_PATH == None:
+            print('Error: miniprot does not exist!')
+        else:
+            print(f'miniprot PATH: {miniprot_PATH}')
+            
+    if TransDecoder_PATH == None:
+        if os.path.exists(os.path.join(sys.path[0], 'bin/TransDecoder-5.7.1/TransDecoder.Predict')):
+            TransDecoder_PATH = os.path.join(sys.path[0], 'bin/TransDecoder-5.7.1/')
+        else:
+            for PATH in os.environ['PATH'].split(':'):
+                if os.path.exists(os.path.join(PATH, 'TransDecoder.Predict')):
+                    TransDecoder_PATH = PATH
+                    break
+        if TransDecoder_PATH == None:
+            print('Error: TransDecoder does not exist!')
+        else:
+            print(f'TransDecoder PATH: {TransDecoder_PATH}')
+        
+    if miniprot_PATH == None or TransDecoder_PATH == None:
+        sys.exit()
+    return miniprot_PATH, TransDecoder_PATH
 
 def rm(file):
     if os.path.isdir(file):
@@ -67,11 +104,12 @@ def rm(file):
 
 def run_miniprot(query_file, genome_file, output, thread, mask, skip_align, outs):
     if mask:
-        cmd = f"{os.path.join(sys.path[0], 'bin', 'sm2rmForFasta.py')} -i {genome_file} -o {genome_file}.tmp"
+        cmd = f"{os.path.join(sys.path[0], 'script', 'sm2rmForFasta.py')} -i {genome_file} -o {genome_file}.tmp"
         subprocess.run(cmd, shell=True)
         genome_file = os.path.realpath(genome_file+'.tmp')
     
-    miniprot  = os.path.join(sys.path[0], 'bin', 'miniprot')
+    #miniprot  = os.path.join(sys.path[0], 'bin', 'miniprot')
+    miniprot = miniprot_PATH
     cmd = f'{miniprot} -I --outs={outs} -t {thread} --aln --gff {genome_file} {query_file} > {output}'
     if skip_align:
         pass
@@ -98,7 +136,9 @@ def merge_region(regions):
     return merge_region
 
 
-miniprot_output = 'miniprot_output.gff3'
+miniprot_PATH, TransDecoder_PATH = check_dependencies(miniprot_PATH=None, TransDecoder_PATH=None)
+
+miniprot_output = prefix + '.miniprot_output.gff3'
 run_miniprot(query_file=query_file, genome_file=genome_file, output=miniprot_output, 
              thread=thread, mask=mask, skip_align=skip_align, outs=args.outs)
 
@@ -143,53 +183,53 @@ for index, transcript in enumerate(clusters):
               'gene_id "QUKPGENE{}"; transcript_id "QUKPMRNA{};'.format(index+1, index+1), sep='\t', file=out)
 out.close()
 
-cmd = f"{os.path.join(sys.path[0], 'bin/TransDecoder-5.7.1/util/gtf_to_alignment_gff3.pl')} quickprot.transcript.gtf > quickprot.transcript.gff3"
+cmd = f"{os.path.join(TransDecoder_PATH, 'util/gtf_to_alignment_gff3.pl')} {prefix}.transcript.gtf > {prefix}.transcript.gff3"
 subprocess.run(cmd, shell=True, capture_output=True)
-cmd = f"{os.path.join(sys.path[0], 'bin/TransDecoder-5.7.1/util/gtf_genome_to_cdna_fasta.pl')} quickprot.transcript.gtf {genome_file} > quickprot.transcript.fasta"
+cmd = f"{os.path.join(TransDecoder_PATH, 'util/gtf_genome_to_cdna_fasta.pl')} {prefix}.transcript.gtf {genome_file} > {prefix}.transcript.fasta"
 subprocess.run(cmd, shell=True, capture_output=True)
-cmd = f"{os.path.join(sys.path[0], 'bin/TransDecoder-5.7.1/TransDecoder.LongOrfs')} -t quickprot.transcript.fasta --genetic_code {genetic_code}"
+cmd = f"{os.path.join(TransDecoder_PATH, 'TransDecoder.LongOrfs')} -t {prefix}.transcript.fasta --genetic_code {genetic_code}"
 subprocess.run(cmd, shell=True, capture_output=True)
-cmd = f"{os.path.join(sys.path[0], 'bin/TransDecoder-5.7.1/TransDecoder.Predict')} -t quickprot.transcript.fasta --genetic_code {genetic_code}"
+cmd = f"{os.path.join(TransDecoder_PATH, 'TransDecoder.Predict')} -t {prefix}.transcript.fasta --genetic_code {genetic_code}"
 if single_best_only == True:
     cmd += ' --single_best_only'
 subprocess.run(cmd, shell=True, capture_output=True)
 
-cmd = f"{os.path.join(sys.path[0], 'bin/TransDecoder-5.7.1/util/cdna_alignment_orf_to_genome_orf.pl')} \
-quickprot.transcript.fasta.transdecoder.gff3 quickprot.transcript.gff3 quickprot.transcript.fasta > quickprot.transcript.genome.gff3"
+cmd = f"{os.path.join(TransDecoder_PATH, 'util/cdna_alignment_orf_to_genome_orf.pl')} \
+{prefix}.transcript.fasta.transdecoder.gff3 {prefix}.transcript.gff3 {prefix}.transcript.fasta > {prefix}.transcript.genome.gff3"
 subprocess.run(cmd, shell=True, capture_output=True)
 
-cmd = f"{os.path.join(sys.path[0], 'bin/split_and_filter_gene_model.py')} \
--i quickprot.transcript.genome.gff3 -o {prefix}.gff3 --overlap {overlap}"
+cmd = f"{os.path.join(sys.path[0], 'script/split_and_filter_gene_model.py')} \
+-i {prefix}.transcript.genome.gff3 -o {prefix}.gff3 --overlap {overlap}"
 subprocess.run(cmd, shell=True)
 
-cmd = f"{os.path.join(sys.path[0], 'bin/TransDecoder-5.7.1/util/gff3_file_to_proteins.pl')} \
+cmd = f"{os.path.join(TransDecoder_PATH, 'util/gff3_file_to_proteins.pl')} \
 --gff3 {prefix}.gff3 --fasta {genome_file} --genetic_code {genetic_code} --seqType prot > {prefix}.pep.fasta"
 subprocess.run(cmd, shell=True, capture_output=True)
 
-cmd = f"{os.path.join(sys.path[0], 'bin/TransDecoder-5.7.1/util/gff3_file_to_proteins.pl')} \
+cmd = f"{os.path.join(TransDecoder_PATH, 'util/gff3_file_to_proteins.pl')} \
 --gff3 {prefix}.gff3 --fasta {genome_file} --genetic_code {genetic_code} --seqType CDS > {prefix}.cds.fasta"
 subprocess.run(cmd, shell=True, capture_output=True)
 
-cmd = f"{os.path.join(sys.path[0], 'bin/get_longest_transcript_gff3.py')} {prefix}.gff3 -o {prefix}.longest.gff3"
+cmd = f"{os.path.join(sys.path[0], 'script/get_longest_transcript_gff3.py')} {prefix}.gff3 -o {prefix}.longest.gff3"
 subprocess.run(cmd, shell=True, capture_output=True)
 
-cmd = f"{os.path.join(sys.path[0], 'bin/TransDecoder-5.7.1/util/gff3_file_to_proteins.pl')} \
+cmd = f"{os.path.join(TransDecoder_PATH, 'util/gff3_file_to_proteins.pl')} \
 --gff3 {prefix}.longest.gff3 --fasta {genome_file} --genetic_code {genetic_code} --seqType prot > {prefix}.longest.pep.fasta"
 subprocess.run(cmd, shell=True, capture_output=True)
 
-cmd = f"{os.path.join(sys.path[0], 'bin/TransDecoder-5.7.1/util/gff3_file_to_proteins.pl')} \
+cmd = f"{os.path.join(TransDecoder_PATH, 'util/gff3_file_to_proteins.pl')} \
 --gff3 {prefix}.longest.gff3 --fasta {genome_file} --genetic_code {genetic_code} --seqType CDS > {prefix}.longest.cds.fasta"
 subprocess.run(cmd, shell=True, capture_output=True)
 
 intermediate_files = [#os.path.realpath('miniprot_output.gff3'),
-                      os.path.realpath('quickprot.transcript.gtf'),
-                      os.path.realpath('quickprot.transcript.gff3'),
-                      os.path.realpath('quickprot.transcript.genome.gff3'),
-                      *tuple(glob.glob(os.path.realpath('quickprot.transcript.fasta')+'*'))]
+                      os.path.realpath(f'{prefix}.transcript.gtf'),
+                      os.path.realpath(f'{prefix}.transcript.gff3'),
+                      os.path.realpath(f'{prefix}.transcript.genome.gff3'),
+                      *tuple(glob.glob(os.path.realpath(f'{prefix}.transcript.fasta')+'*'))]
 if noclean:
     pass
 else:
     for file in intermediate_files:
-        print(file)
+        #print(file)
         rm(file)
 

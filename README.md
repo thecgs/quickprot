@@ -56,13 +56,13 @@ This pipeline can improve busco missing result, but you need to download [comple
 compleasm.py run -a genome.fasta -o ./ -l your_lineage
 
 ## step3. to update raw gff3 of step1 from compleasm result
-./bin/update_gff3_from_minibusco.py -r quickprot.raw.longest.gff3 -m ./your_lineage/miniprot_output.gff -g genome.fasta -o improve_busco.gff3
+./script/update_gff3_from_minibusco.py -r quickprot.raw.longest.gff3 -m ./your_lineage/miniprot_output.gff -g genome.fasta -o improve_busco.gff3
 
 ## step4. merge step1 and step3 gff3 result
 cat quickprot.raw.longest.gff3 improve_busco.gff3 > genome.longest.gff.tmp
 
 ## step5. to sort by chromosomes or scaffold and gene start position and to rename gff3
-./bin/sort_gff3.py genome.longest.gff.tmp | ./bin/rename_gff3.py - -o genome.longest.gff3 -p QUICKPROT; rm genome.longest.gff.tmp
+./script/sort_gff3.py genome.longest.gff.tmp | ./bin/rename_gff3.py - -o genome.longest.gff3 -p QUICKPROT; rm genome.longest.gff.tmp
 
 ## step6. extract protein sequence from genome and gff file
 ./bin/TransDecoder-5.7.1/util/gff3_file_to_proteins.pl --gff3 genome.longest.gff3 --fasta genome.fasta --seqType prot  > genome.longest.pep.fasta

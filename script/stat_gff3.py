@@ -78,6 +78,10 @@ def stat_gff3(gff3_file):
     Average_CDS_length_per_gene = sum(CDS_nums.values())/mRNA_number
     Average_exon_length_per_gene = sum(exon_nums.values())/mRNA_number
     Average_intron_length_per_gene = sum(intron_nums.values())/mRNA_number
+    
+    mono_exonic = len(list(filter(lambda x: x==1, exon_nums.values())))
+    multi_exonic = len(exon_nums) - mono_exonic
+    Ratios_of_mono_exonic_to_multi_exonic_genes = mono_exonic/multi_exonic
 
     result = {"Gene number": str(gene_number),
      "Transcript number": str(mRNA_number),
@@ -92,7 +96,7 @@ def stat_gff3(gff3_file):
      "CDS average length for per transcript(bp)": "{:.2f}".format(per_gene_Average_CDS_length),
      "Exon average length for per transcript(bp)": "{:.2f}".format(per_gene_Average_exon_length),
      "Intron average length for per transcript(bp)": "{:.2f}".format(per_gene_Average_intron_length),
-
+     "Ratios of mono-exonic to multi-exonic genes": "{:.2f}".format(Ratios_of_mono_exonic_to_multi_exonic_genes),
     }
     return result
 
@@ -119,6 +123,7 @@ def main(gff3_files, output=None):
 # CDS average length for per transcript(bp) = Total length of CDSs / Total number of transcripts
 # Exon average length for per transcript(bp) = Total length of exons / Total number of transcripts
 # Intron average length for per transcript(bp) = Total length of introns / Total number of transcripts
+# Ratios of mono-exonic to multi-exonic genes = mono-exonic gene number / multi-exonic gene number
 """, file=outerr)
 
     print("Name", "Gene number", "Transcript number", 
@@ -128,6 +133,7 @@ def main(gff3_files, output=None):
           "CDS average length for per transcript(bp)",
           "Exon average length for per transcript(bp)",
           "Intron average length for per transcript(bp)",
+          "Ratios of mono-exonic to multi-exonic genes",
           sep='\t', file=out)
     
     for gff3_file in gff3_files:
@@ -147,6 +153,7 @@ def main(gff3_files, output=None):
               stat["CDS average length for per transcript(bp)"],
               stat["Exon average length for per transcript(bp)"],
               stat["Intron average length for per transcript(bp)"],
+              stat["Ratios of mono-exonic to multi-exonic genes"],
               sep='\t', file=out)
 
     out.close()
