@@ -58,7 +58,6 @@ the fused ORF will be split in subsequent analysis.""")
     overlap = args.overlap
     TransDecoder_PATH = args.TransDecoder_PATH
     miniprot_PATH = args.miniprot_PATH
-    
 
 def check_dependencies(miniprot_PATH=None, TransDecoder_PATH=None):
     if miniprot_PATH==None:
@@ -174,7 +173,7 @@ for exon_region in exon_regions:
             break
 print('Assemble {} transcripts'.format(len(clusters)))
 
-out = open('quickprot.transcript.gtf', 'w')
+out = open(f'{prefix}.transcript.gtf', 'w')
 for index, transcript in enumerate(clusters):
     print(transcript[0], 'quickprot', 'transcript', transcript[1], transcript[2], '.', transcript[3], '.',
           'gene_id "QUKPGENE{}"; transcript_id "QUKPMRNA{}";'.format(index+1, index+1), sep='\t', file=out)
@@ -184,7 +183,7 @@ for index, transcript in enumerate(clusters):
 out.close()
 
 cmd = f"{os.path.join(TransDecoder_PATH, 'util/gtf_to_alignment_gff3.pl')} {prefix}.transcript.gtf > {prefix}.transcript.gff3"
-subprocess.run(cmd, shell=True, capture_output=True)
+subprocess.run(cmd, shell=True, capture_output=False)
 cmd = f"{os.path.join(TransDecoder_PATH, 'util/gtf_genome_to_cdna_fasta.pl')} {prefix}.transcript.gtf {genome_file} > {prefix}.transcript.fasta"
 subprocess.run(cmd, shell=True, capture_output=True)
 cmd = f"{os.path.join(TransDecoder_PATH, 'TransDecoder.LongOrfs')} -t {prefix}.transcript.fasta --genetic_code {genetic_code}"
