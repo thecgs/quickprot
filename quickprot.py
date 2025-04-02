@@ -220,7 +220,7 @@ cmd = f"{os.path.join(TransDecoder_PATH, 'util/gff3_file_to_proteins.pl')} \
 --gff3 {prefix}.longest.gff3 --fasta {genome_file} --genetic_code {genetic_code} --seqType CDS > {prefix}.longest.cds.fasta"
 subprocess.run(cmd, shell=True, capture_output=True)
 
-intermediate_files = [#os.path.realpath('miniprot_output.gff3'),
+intermediate_files = [#os.path.realpath(f'{prefix}.miniprot_output.gff3'),
                       os.path.realpath(f'{prefix}.transcript.gtf'),
                       os.path.realpath(f'{prefix}.transcript.gff3'),
                       os.path.realpath(f'{prefix}.transcript.genome.gff3'),
