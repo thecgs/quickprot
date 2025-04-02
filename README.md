@@ -62,7 +62,7 @@ compleasm.py run -a genome.fasta -o ./ -l your_lineage
 cat quickprot.raw.longest.gff3 improve_busco.gff3 > genome.longest.gff.tmp
 
 ## step5. to sort by chromosomes or scaffold and gene start position and to rename gff3
-./script/sort_gff3.py genome.longest.gff.tmp | ./bin/rename_gff3.py - -o genome.longest.gff3 -p QUICKPROT; rm genome.longest.gff.tmp
+./script/sort_gff3.py genome.longest.gff.tmp | ./script/rename_gff3.py - -o genome.longest.gff3 -p QUICKPROT; rm genome.longest.gff.tmp
 
 ## step6. extract protein sequence from genome and gff file
 ./bin/TransDecoder-5.7.1/util/gff3_file_to_proteins.pl --gff3 genome.longest.gff3 --fasta genome.fasta --seqType prot  > genome.longest.pep.fasta
@@ -75,4 +75,5 @@ cat quickprot.raw.longest.gff3 improve_busco.gff3 > genome.longest.gff.tmp
 
 If you use quickprot, please cite:
 
-> Guisen Chen, QuickProt: A Fast and Accurate Homology-Based Protein Annotation Tool for Non-Model Organism Genomes.
+> Guisen Chen, Hehe Du, Zhenjie Cao, Ying Wu, Chen Zhang, Yongcan Zhou, Jingqun Ao, Yun Sun, Zihao Yuan. QuickProt: A Fast and Accurate Homology-Based Protein Annotation Tool for Non-Model Organism Genomes.
+
