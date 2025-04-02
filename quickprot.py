@@ -101,6 +101,13 @@ def rm(file):
             pass
     return None
 
+def mkdir(path):
+    try:
+        os.makedirs(path)
+    except FileExistsError:
+        pass
+    return None
+    
 def run_miniprot(query_file, genome_file, output, thread, mask, skip_align, outs):
     if mask:
         cmd = f"{os.path.join(sys.path[0], 'script', 'sm2rmForFasta.py')} -i {genome_file} -o {genome_file}.tmp"
@@ -137,6 +144,9 @@ def merge_region(regions):
 
 miniprot_PATH, TransDecoder_PATH = check_dependencies(miniprot_PATH=None, TransDecoder_PATH=None)
 
+if os.path.dirname(prefix) != '':
+    mkdir(os.path.realpath(os.path.dirname(prefix)))
+    
 miniprot_output = prefix + '.miniprot_output.gff3'
 run_miniprot(query_file=query_file, genome_file=genome_file, output=miniprot_output, 
              thread=thread, mask=mask, skip_align=skip_align, outs=args.outs)
@@ -186,9 +196,16 @@ cmd = f"{os.path.join(TransDecoder_PATH, 'util/gtf_to_alignment_gff3.pl')} {pref
 subprocess.run(cmd, shell=True, capture_output=False)
 cmd = f"{os.path.join(TransDecoder_PATH, 'util/gtf_genome_to_cdna_fasta.pl')} {prefix}.transcript.gtf {genome_file} > {prefix}.transcript.fasta"
 subprocess.run(cmd, shell=True, capture_output=True)
-cmd = f"{os.path.join(TransDecoder_PATH, 'TransDecoder.LongOrfs')} -t {prefix}.transcript.fasta --genetic_code {genetic_code}"
+
+
+if os.path.dirname(prefix) == '':
+    output_dir = os.getcwd()
+else:
+    output_dir = os.path.realpath(os.path.dirname(prefix))
+    
+cmd = f"{os.path.join(TransDecoder_PATH, 'TransDecoder.LongOrfs')} -t {prefix}.transcript.fasta --genetic_code {genetic_code} --output_dir {output_dir}"
 subprocess.run(cmd, shell=True, capture_output=True)
-cmd = f"{os.path.join(TransDecoder_PATH, 'TransDecoder.Predict')} -t {prefix}.transcript.fasta --genetic_code {genetic_code}"
+cmd = f"{os.path.join(TransDecoder_PATH, 'TransDecoder.Predict')} -t {prefix}.transcript.fasta --genetic_code {genetic_code} --output_dir {output_dir}"
 if single_best_only == True:
     cmd += ' --single_best_only'
 subprocess.run(cmd, shell=True, capture_output=True)
