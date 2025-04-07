@@ -41,7 +41,7 @@ def get_miniprot_gff3_to_gff3(gff_file, output):
 def get_best_gene_model(genome, gff_file, genetic_code, identity=0.6):
     get_miniprot_gff3_to_gff3(gff_file, output='miniprot_output_tmp.gff3')
     
-    gff3_file_to_proteins = os.path.join(sys.path[0], 'TransDecoder-5.7.1/util/gff3_file_to_proteins.pl')
+    gff3_file_to_proteins = os.path.join(sys.path[0], '../bin/TransDecoder-5.7.1/util/gff3_file_to_proteins.pl')
     cmd = f"{gff3_file_to_proteins} --gff3 miniprot_output_tmp.gff3 --fasta {genome} --genetic_code {genetic_code} --seqType prot"
     result=subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, encoding='utf-8')
     
