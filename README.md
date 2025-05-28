@@ -22,9 +22,9 @@ Python3 >= 3.8, perl >= 5
 For ease of use, [miniprot](https://github.com/lh3/miniprot/) (v0.12) and  [TransDecoder](https://github.com/TransDecoder/TransDecoder) (v5.7.1)  software are integrated into quickprot.
 
 ```
-wget https://github.com/thecgs/quickprot/archive/refs/tags/quickprot-v1.11.tar.gz
-tar -zxvf quickprot-v1.11.tar.gz
-cd quickprot-v1.11
+wget https://github.com/thecgs/quickprot/archive/refs/tags/quickprot-v1.1.0.tar.gz
+tar -zxvf quickprot-v1.1.0.tar.gz
+cd quickprot-v1.1.0
 ./quickprot -h
 ```
 
@@ -36,6 +36,9 @@ pip install biopython
 
 # if you need to use sort_gff3.py script, and you need to install natsort.
 pip install natsort
+
+# if you need to use -ORFSoftware TD2, and you need to install TD2
+pip install TD2
 ```
 
 ## Usage:
@@ -75,5 +78,5 @@ cat quickprot.raw.longest.gff3 improve_busco.gff3 > genome.longest.gff.tmp
 
 If you use quickprot, please cite:
 
-> Guisen Chen, Hehe Du, Zhenjie Cao, Ying Wu, Chen Zhang, Yongcan Zhou, Jingqun Ao, Yun Sun, Zihao Yuan. QuickProt: A Fast and Accurate Homology-Based Protein Annotation Tool for Non-Model Organism Genomes.
+> Guisen Chen, Hehe Du, Zhenjie Cao, Ying Wu, Chen Zhang, Yongcan Zhou, Jingqun Ao, Yun Sun, Zihao Yuan. QuickProt: A Fast and Accurate Homology-Based Protein Annotation Tool for Non-Model Organism Genomes and Promoting Comparative Genomics Research.
 
