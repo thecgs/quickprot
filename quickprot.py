@@ -12,26 +12,47 @@ from collections import defaultdict
 from argparse import RawTextHelpFormatter
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Quick genome annotation base on protein.", add_help=False, 
-                                     epilog='date:2024/11/19 author:guisen chen email:thecgs001@foxmail.com', 
-                                     formatter_class=RawTextHelpFormatter)
+    parser = argparse.ArgumentParser(description="""
+Quick genome annotation base on protein.
+
+https://www.ncbi.nlm.nih.gov/Taxonomy/taxonomyhome.html/index.cgi?chapter=tgencodes
+
+1: The Standard Code
+2: The Vertebrate Mitochondrial Code
+3: The Yeast Mitochondrial Code
+4: The Mold, Protozoan, and Coelenterate Mitochondrial Code and the Mycoplasma/Spiroplasma Code
+5: The Invertebrate Mitochondrial Code
+6: The Ciliate, Dasycladacean and Hexamita Nuclear Code
+9: The Echinoderm and Flatworm Mitochondrial Code
+10: The Euplotid Nuclear Code
+11: The Bacterial, Archaeal and Plant Plastid Code    ## TransDecoder not supported
+12: The Alternative Yeast Nuclear Code
+13: The Ascidian Mitochondrial Code
+14: The Alternative Flatworm Mitochondrial Code       ## TransDecoder not supported
+16: Chlorophycean Mitochondrial Code
+21: Trematode Mitochondrial Code
+22: Scenedesmus obliquus Mitochondrial Code
+23: Thraustochytrium Mitochondrial Code
+24: Pterobranchia Mitochondrial Code
+25: Candidate Division SR1 and Gracilibacteria Code
+26: Pachysolen tannophilus Nuclear Code
+27: Karyorelict Nuclear                               ## TransDecoder not supported
+28: Condylostoma Nuclear                              ## TransDecoder not supported
+29: Mesodinium Nuclear
+30: Peritrich Nuclear
+31: Blastocrithidia Nuclear                           ## TransDecoder not supported
+""", add_help=False, epilog='date:2024/11/19 author:guisen chen email:thecgs001@foxmail.com', formatter_class=RawTextHelpFormatter)
     required = parser.add_argument_group('required arguments')
     optional = parser.add_argument_group('optional arguments')
     required.add_argument('-q', '--query', metavar='str', help='A file of query protein fasta format.', required=True)
     required.add_argument('-g', '--genome', metavar='str', help='A file of genome fasta format.', required=True)
     optional.add_argument('-p', '--prefix', metavar='str', default='quickprot', help='Prefix of a output file. default=quickprot')
-    optional.add_argument('-i', '--identity', metavar='float', type=float, default=0.95, help='Alignment identity (0-1). default=0.95')
-    optional.add_argument('--outs', metavar='float', type=float, default=0.99, help='Output score at least bestScore (0-1). default=0.99')
+    optional.add_argument('-i', '--identity', metavar='float', type=float, default=0.8, help='Alignment identity (0-1). default=0.8')
+    optional.add_argument('--outs', metavar='float', type=float, default=0.95, help='Output score at least bestScore (0-1). default=0.95')
     optional.add_argument('--overlap', metavar='float', type=float, default=0.8, help="""If the overlap of predicted ORFs in a transcript is less than default value (0-1). default=0.8, 
 they will be dissected.""")
     optional.add_argument('-t', '--thread', metavar='int', type=int, default=os.cpu_count(), help=f'Thread number of run miniprot sortware. defualt={os.cpu_count()}')
-    optional.add_argument('-G', '--genetic_code', metavar='str', type=str, default='Universal', help=f"""Genetic Codes (derived from: https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi). defualt=Universal
-The supported genetic codon tables are Acetabularia, Candida, Ciliate, Dasycladacean, Euplotid, Hexamita,
-Mesodinium, Mitochondrial-Ascidian, Mitochondrial-Chlorophycean, Mitochondrial-Echinoderm, Mitochondrial-Flatworm,
-Mitochondrial-Invertebrates, Mitochondrial-Protozoan, Mitochondrial-Pterobranchia, Mitochondrial-Scenedesmus_obliquus,
-Mitochondrial-Thraustochytrium, Mitochondrial-Trematode, Mitochondrial-Vertebrates, Mitochondrial-Yeast, 
-Pachysolen_tannophilus,Peritrich, SR1_Gracilibacteria, Tetrahymena, and Universal.
-""")
+    optional.add_argument('-G', '--genetic_code', metavar='int', type=int, default=1, help="Genetic code. default=1")
     optional.add_argument('-s', '--skip_align', action='store_true', help="Skip run miniprot step. default=False")
     optional.add_argument('-m', '--mask', action='store_true', help="Soft-masked (dna_sm) genome convert to masked(dna_rm) genome. default=False")
     optional.add_argument('-n', '--noclean', action='store_true', help="Do not delete intermediate files. default=False")
@@ -41,6 +62,8 @@ it can lead to fusion during transcript assembly. If a transcript is not set wit
 the fused ORF will be split in subsequent analysis.""")
     optional.add_argument('-miniprot_PATH', '--miniprot_PATH', metavar='str', help="miniprot PATH default=auto.", default=None)
     optional.add_argument('-TransDecoder_PATH', '--TransDecoder_PATH', metavar='str', help="TransDecoder PATH default=auto.", default=None)
+    optional.add_argument('-ORFSoftware', '--ORFSoftware', metavar='str', 
+                          help="Tool for selecting predicted ORFs, TransDecoder or TD2. default=TransDecoder", default="TransDecoder")
     optional.add_argument('-h', '--help', action='help', help="Show program's help message and exit.")
     optional.add_argument('-v', '--version', action='version', version='v1.11', help="Show program's version number and exit.")
     args = parser.parse_args()
@@ -58,8 +81,33 @@ the fused ORF will be split in subsequent analysis.""")
     overlap = args.overlap
     TransDecoder_PATH = args.TransDecoder_PATH
     miniprot_PATH = args.miniprot_PATH
+    ORFSoftware = args.ORFSoftware
 
-def check_dependencies(miniprot_PATH=None, TransDecoder_PATH=None):
+    
+NCBI2TransDecoder_genetic_code = {1: "Universal",
+                                  2: "Mitochondrial-Vertebrates",
+                                  3: "Mitochondrial-Yeast",
+                                  4: "Mitochondrial-Protozoan",
+                                  5: "Mitochondrial-Invertebrates",
+                                  6: "Ciliate",                    # Acetabularia, Dasycladacean, Hexamita, Tetrahymena
+                                  9: "Mitochondrial-Echinoderm",   # Mitochondrial-Flatworm
+                                  10: "Euplotid",
+                                  12: "Candida",
+                                  13: "Mitochondrial-Ascidian",
+                                  16: "Mitochondrial-Chlorophycean",
+                                  21: "Mitochondrial-Trematode",
+                                  22: "Mitochondrial-Scenedesmus_obliquus",
+                                  23: "Mitochondrial-Thraustochytrium",
+                                  24: "Mitochondrial-Pterobranchia",
+                                  25: "SR1_Gracilibacteria",
+                                  26: "Pachysolen_tannophilus",
+                                  29: "Mesodinium",
+                                  30: "Peritrich",
+}
+
+
+def check_dependencies(ORFSoftware, miniprot_PATH=None, TransDecoder_PATH=None):
+    print("Check dependencies...")
     if miniprot_PATH==None:
         if os.path.exists(os.path.join(sys.path[0], 'bin/miniprot-0.12/miniprot')):
             miniprot_PATH = os.path.join(sys.path[0], 'bin/miniprot-0.12/miniprot')
@@ -89,6 +137,15 @@ def check_dependencies(miniprot_PATH=None, TransDecoder_PATH=None):
         
     if miniprot_PATH == None or TransDecoder_PATH == None:
         sys.exit()
+        
+    if ORFSoftware=="TransDecoder":
+        pass
+    elif ORFSoftware=="TD2":
+        try:
+            import TD2
+            print("TD2 installed.")
+        except ModuleNotFoundError:
+            print('Plase install TD2. Install command: `pip3 install TD2`.')
     return miniprot_PATH, TransDecoder_PATH
 
 def rm(file):
@@ -140,9 +197,9 @@ def merge_region(regions):
             merge_region[-1][2] = max(merge_region[-1][2], region[2])
             #merge_region[-1][1] = min(merge_region[-1][1], region[1])
     return merge_region
+    
 
-
-miniprot_PATH, TransDecoder_PATH = check_dependencies(miniprot_PATH=None, TransDecoder_PATH=None)
+miniprot_PATH, TransDecoder_PATH = check_dependencies(ORFSoftware, miniprot_PATH, TransDecoder_PATH)
 
 if os.path.dirname(prefix) != '':
     mkdir(os.path.realpath(os.path.dirname(prefix)))
@@ -197,55 +254,111 @@ subprocess.run(cmd, shell=True, capture_output=False)
 cmd = f"{os.path.join(TransDecoder_PATH, 'util/gtf_genome_to_cdna_fasta.pl')} {prefix}.transcript.gtf {genome_file} > {prefix}.transcript.fasta"
 subprocess.run(cmd, shell=True, capture_output=True)
 
-
 if os.path.dirname(prefix) == '':
     output_dir = os.getcwd()
 else:
     output_dir = os.path.realpath(os.path.dirname(prefix))
+
+if ORFSoftware=="TransDecoder":
+    cmd = f"{os.path.join(TransDecoder_PATH, 'TransDecoder.LongOrfs')} -t {prefix}.transcript.fasta --genetic_code {NCBI2TransDecoder_genetic_code[genetic_code]} --output_dir {output_dir}"
+    subprocess.run(cmd, shell=True, capture_output=True)
+    cmd = f"{os.path.join(TransDecoder_PATH, 'TransDecoder.Predict')} -t {prefix}.transcript.fasta --genetic_code {NCBI2TransDecoder_genetic_code[genetic_code]} --output_dir {output_dir}"
+    if single_best_only == True:
+        cmd += ' --single_best_only'
+    subprocess.run(cmd, shell=True, capture_output=True)
+
+    cmd = f"{os.path.join(TransDecoder_PATH, 'util/cdna_alignment_orf_to_genome_orf.pl')} \
+    {prefix}.transcript.fasta.transdecoder.gff3 {prefix}.transcript.gff3 {prefix}.transcript.fasta > {prefix}.transcript.genome.gff3"
+    subprocess.run(cmd, shell=True, capture_output=True)
     
-cmd = f"{os.path.join(TransDecoder_PATH, 'TransDecoder.LongOrfs')} -t {prefix}.transcript.fasta --genetic_code {genetic_code} --output_dir {output_dir}"
-subprocess.run(cmd, shell=True, capture_output=True)
-cmd = f"{os.path.join(TransDecoder_PATH, 'TransDecoder.Predict')} -t {prefix}.transcript.fasta --genetic_code {genetic_code} --output_dir {output_dir}"
-if single_best_only == True:
-    cmd += ' --single_best_only'
-subprocess.run(cmd, shell=True, capture_output=True)
+    cmd = f"{os.path.join(sys.path[0], 'script/split_and_filter_gene_model.py')} \
+    -i {prefix}.transcript.genome.gff3 -o {prefix}.gff3 --overlap {overlap}"
+    subprocess.run(cmd, shell=True)
 
-cmd = f"{os.path.join(TransDecoder_PATH, 'util/cdna_alignment_orf_to_genome_orf.pl')} \
-{prefix}.transcript.fasta.transdecoder.gff3 {prefix}.transcript.gff3 {prefix}.transcript.fasta > {prefix}.transcript.genome.gff3"
-subprocess.run(cmd, shell=True, capture_output=True)
+    cmd = f"{os.path.join(TransDecoder_PATH, 'util/gff3_file_to_proteins.pl')} \
+    --gff3 {prefix}.gff3 --fasta {genome_file} --genetic_code {NCBI2TransDecoder_genetic_code[genetic_code]} --seqType prot > {prefix}.pep.fasta"
+    subprocess.run(cmd, shell=True, capture_output=True)
 
-cmd = f"{os.path.join(sys.path[0], 'script/split_and_filter_gene_model.py')} \
--i {prefix}.transcript.genome.gff3 -o {prefix}.gff3 --overlap {overlap}"
-subprocess.run(cmd, shell=True)
+    cmd = f"{os.path.join(TransDecoder_PATH, 'util/gff3_file_to_proteins.pl')} \
+    --gff3 {prefix}.gff3 --fasta {genome_file} --genetic_code {NCBI2TransDecoder_genetic_code[genetic_code]} --seqType CDS > {prefix}.cds.fasta"
+    subprocess.run(cmd, shell=True, capture_output=True)
 
-cmd = f"{os.path.join(TransDecoder_PATH, 'util/gff3_file_to_proteins.pl')} \
---gff3 {prefix}.gff3 --fasta {genome_file} --genetic_code {genetic_code} --seqType prot > {prefix}.pep.fasta"
-subprocess.run(cmd, shell=True, capture_output=True)
+    cmd = f"{os.path.join(sys.path[0], 'script/get_longest_transcript_gff3.py')} {prefix}.gff3 -o {prefix}.longest.gff3"
+    subprocess.run(cmd, shell=True, capture_output=True)
 
-cmd = f"{os.path.join(TransDecoder_PATH, 'util/gff3_file_to_proteins.pl')} \
---gff3 {prefix}.gff3 --fasta {genome_file} --genetic_code {genetic_code} --seqType CDS > {prefix}.cds.fasta"
-subprocess.run(cmd, shell=True, capture_output=True)
+    cmd = f"{os.path.join(TransDecoder_PATH, 'util/gff3_file_to_proteins.pl')} \
+    --gff3 {prefix}.longest.gff3 --fasta {genome_file} --genetic_code {NCBI2TransDecoder_genetic_code[genetic_code]} --seqType prot > {prefix}.longest.pep.fasta"
+    subprocess.run(cmd, shell=True, capture_output=True)
 
-cmd = f"{os.path.join(sys.path[0], 'script/get_longest_transcript_gff3.py')} {prefix}.gff3 -o {prefix}.longest.gff3"
-subprocess.run(cmd, shell=True, capture_output=True)
+    cmd = f"{os.path.join(TransDecoder_PATH, 'util/gff3_file_to_proteins.pl')} \
+    --gff3 {prefix}.longest.gff3 --fasta {genome_file} --genetic_code {NCBI2TransDecoder_genetic_code[genetic_code]} --seqType CDS > {prefix}.longest.cds.fasta"
+    subprocess.run(cmd, shell=True, capture_output=True)
 
-cmd = f"{os.path.join(TransDecoder_PATH, 'util/gff3_file_to_proteins.pl')} \
---gff3 {prefix}.longest.gff3 --fasta {genome_file} --genetic_code {genetic_code} --seqType prot > {prefix}.longest.pep.fasta"
-subprocess.run(cmd, shell=True, capture_output=True)
-
-cmd = f"{os.path.join(TransDecoder_PATH, 'util/gff3_file_to_proteins.pl')} \
---gff3 {prefix}.longest.gff3 --fasta {genome_file} --genetic_code {genetic_code} --seqType CDS > {prefix}.longest.cds.fasta"
-subprocess.run(cmd, shell=True, capture_output=True)
-
-intermediate_files = [#os.path.realpath(f'{prefix}.miniprot_output.gff3'),
-                      os.path.realpath(f'{prefix}.transcript.gtf'),
-                      os.path.realpath(f'{prefix}.transcript.gff3'),
-                      os.path.realpath(f'{prefix}.transcript.genome.gff3'),
-                      *tuple(glob.glob(os.path.realpath(f'{prefix}.transcript.fasta')+'*'))]
-if noclean:
-    pass
-else:
-    for file in intermediate_files:
-        #print(file)
-        rm(file)
-
+    intermediate_files = [#os.path.realpath(f'{prefix}.miniprot_output.gff3'),
+                          os.path.realpath(f'{prefix}.transcript.gtf'),
+                          os.path.realpath(f'{prefix}.transcript.gff3'),
+                          os.path.realpath(f'{prefix}.transcript.genome.gff3'),
+                          *tuple(glob.glob(os.path.realpath(f'{prefix}.transcript.fasta')+'*'))]
+    if noclean:
+        pass
+    else:
+        for file in intermediate_files:
+            #print(file)
+            rm(file)
+            
+elif ORFSoftware=="TD2":
+    cmd = f"TD2.LongOrfs -t {prefix}.transcript.fasta -G {genetic_code} -O {output_dir} -@ {thread}"
+    #print(cmd)
+    subprocess.run(cmd, shell=True, capture_output=True)
+    
+    cmd = f"TD2.Predict -t {prefix}.transcript.fasta -G {genetic_code} -O {output_dir}"
+    if single_best_only == True:
+        pass
+    else:
+        #pass
+        cmd += ' --all-good'
+    subprocess.run(cmd, shell=True, capture_output=True)
+    
+    cmd = f"{os.path.join(TransDecoder_PATH, 'util/cdna_alignment_orf_to_genome_orf.pl')} \
+    {prefix}.transcript.fasta.TD2.gff3 {prefix}.transcript.gff3 {prefix}.transcript.fasta > {prefix}.transcript.genome.gff3"
+    subprocess.run(cmd, shell=True, capture_output=True)
+    
+    cmd = f"{os.path.join(sys.path[0], 'script/split_and_filter_gene_model.py')} \
+    -i {prefix}.transcript.genome.gff3 -o {prefix}.gff3 --overlap {overlap}"
+    subprocess.run(cmd, shell=True)
+    
+    cmd = f"{os.path.join(TransDecoder_PATH, 'util/gff3_file_to_proteins.pl')} \
+    --gff3 {prefix}.gff3 --fasta {genome_file} --genetic_code {NCBI2TransDecoder_genetic_code[genetic_code]} --seqType prot > {prefix}.pep.fasta"
+    subprocess.run(cmd, shell=True, capture_output=True)
+    
+    cmd = f"{os.path.join(TransDecoder_PATH, 'util/gff3_file_to_proteins.pl')} \
+    --gff3 {prefix}.gff3 --fasta {genome_file} --genetic_code {NCBI2TransDecoder_genetic_code[genetic_code]} --seqType CDS > {prefix}.cds.fasta"
+    subprocess.run(cmd, shell=True, capture_output=True)
+    
+    cmd = f"{os.path.join(sys.path[0], 'script/get_longest_transcript_gff3.py')} {prefix}.gff3 -o {prefix}.longest.gff3"
+    subprocess.run(cmd, shell=True, capture_output=True)
+    
+    cmd = f"{os.path.join(TransDecoder_PATH, 'util/gff3_file_to_proteins.pl')} \
+    --gff3 {prefix}.longest.gff3 --fasta {genome_file} --genetic_code {NCBI2TransDecoder_genetic_code[genetic_code]} --seqType prot > {prefix}.longest.pep.fasta"
+    subprocess.run(cmd, shell=True, capture_output=True)
+    
+    cmd = f"{os.path.join(TransDecoder_PATH, 'util/gff3_file_to_proteins.pl')} \
+    --gff3 {prefix}.longest.gff3 --fasta {genome_file} --genetic_code {NCBI2TransDecoder_genetic_code[genetic_code]} --seqType CDS > {prefix}.longest.cds.fasta"
+    subprocess.run(cmd, shell=True, capture_output=True)
+    
+    intermediate_files = [#os.path.realpath(f'{prefix}.miniprot_output.gff3'),
+                          os.path.realpath(f'{prefix}.transcript.gtf'),
+                          os.path.realpath(f'{prefix}.transcript.gff3'),
+                          os.path.realpath(f'{prefix}.transcript.genome.gff3'),
+                          os.path.realpath(os.path.join(os.path.dirname(prefix),'longest_orfs.cds')),
+                          os.path.realpath(os.path.join(os.path.dirname(prefix),'longest_orfs.pep')),
+                          os.path.realpath(os.path.join(os.path.dirname(prefix),'longest_orfs.gff3')),
+                          os.path.realpath(os.path.join(os.path.dirname(prefix),'psauron_score.csv')),
+                          *tuple(glob.glob(os.path.realpath(f'{prefix}.transcript.fasta')+'*'))]
+    #print(intermediate_files)
+    
+    if noclean:
+        pass
+    else:
+        for file in intermediate_files:
+            rm(file)             
