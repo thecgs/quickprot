@@ -142,7 +142,7 @@ def merge_region(regions):
     return merge_region
 
 
-miniprot_PATH, TransDecoder_PATH = check_dependencies(miniprot_PATH=None, TransDecoder_PATH=None)
+miniprot_PATH, TransDecoder_PATH = check_dependencies(miniprot_PATH, TransDecoder_PATH)
 
 if os.path.dirname(prefix) != '':
     mkdir(os.path.realpath(os.path.dirname(prefix)))
