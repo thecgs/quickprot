@@ -23,8 +23,8 @@ For ease of use, [miniprot](https://github.com/lh3/miniprot/) (v0.12) and  [Tran
 
 ```
 wget https://github.com/thecgs/quickprot/archive/refs/tags/quickprot-v1.11.tar.gz
-tar -zxvf quickprot-v1.11.tar.gz
-cd quickprot-v1.11
+tar -zxvf quickprot-v1.0.0.tar.gz
+cd quickprot-v1.0.0
 ./quickprot -h
 ```
 
