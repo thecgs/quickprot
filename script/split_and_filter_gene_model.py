@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import re
+import re, os
 import argparse
 from collections import defaultdict
 
@@ -40,6 +40,17 @@ def get_filter_regions(regions, overlap=0.8):
                     filter_regions[-1] = region
     return filter_regions
 
+scores = {}
+try:
+    with open(f"{os.path.join(os.path.dirname(os.path.realpath(infile)),'psauron_score.csv')}", 'r') as f:
+        next(f)
+        next(f)
+        next(f)
+        for l in f:
+            scores.setdefault(l.strip('\n').split(',')[0], l.strip('\n').split(',')[2])
+except FileNotFoundError:
+    pass
+
 mRNA2CDS = defaultdict(list)
 with open(infile, 'r') as f:
     for l in f:
@@ -47,8 +58,14 @@ with open(infile, 'r') as f:
             l = l.strip().split('\t')
             if l[2] == 'mRNA':
                 ID = re.search('ID=(.*?);',l[8]).group(1)
-                TYPE = re.search('Name="ORF type:(.*?) \(',l[8]).group(1)
-                SCORE = float(re.search(',score=(.*?)"',l[8]).group(1))
+                try:
+                    TYPE = re.search('Name="ORF type:(.*?) \(',l[8]).group(1)
+                except AttributeError:
+                    TYPE = re.search('type:(.*?) len',l[8]).group(1)
+                try:
+                    SCORE = float(re.search(',score=(.*?)"',l[8]).group(1))
+                except:
+                    SCORE =  float(scores.get(ID, 0))
                 Key = (l[0],l[6], ID, TYPE, SCORE)
             if l[2] == 'CDS':
                 Value = (l[0], int(l[3]), int(l[4]), l[6], int(l[7]))
@@ -69,6 +86,7 @@ for g in filter_regions:
             
 out = open(outfile, 'w')
 ti = 0
+gi = 0
 for gi, g in enumerate(cluster_genes):
     print(g[0], 'quickprot', 'gene', g[1], g[2], '.', g[3], '.', f'ID=QUKPGENE{gi+1};', file=out, sep='\t')
     for mi, m in enumerate(cluster_genes[g]):
