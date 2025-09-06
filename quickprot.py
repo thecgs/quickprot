@@ -148,6 +148,51 @@ def check_dependencies(ORFSoftware, miniprot_PATH=None, TransDecoder_PATH=None):
             print('Plase install TD2. Install command: `pip3 install TD2`.')
     return miniprot_PATH, TransDecoder_PATH
 
+
+def run_cmd(cmd, jobname=None):
+    
+    import sys
+    import time
+    import subprocess
+    
+    def htime(t):
+        if 0 <= round(t,2) < 60:
+            res = '{:.2f}{}'.format(t, 's')
+        elif 60 <= round(t,2) < 60*60:
+            res = '{:.2f}{}'.format(t/60, 'm')
+        elif 60*60 <= round(t,2) < 60*60*60:
+            res = '{:.2f}{}'.format(t/60/60, 'h')
+        else:
+            res = '{:.2f}{}'.format(t/60/60/24, 'd')
+        return res
+    
+    log = sys.stderr
+    
+    start_time = time.gmtime()
+    ftime = time.strftime('%Y-%m-%d %H:%M:%S', start_time)
+    print(f"\033[033m[Running {ftime}]: {cmd}\033[0m", file=log)
+    if jobname==None:
+        res = subprocess.run(cmd, shell=True)
+        end_time = time.gmtime()
+        ftime = time.strftime('%Y-%m-%d %H:%M:%S', end_time)
+        if res.returncode == 0:
+            print(f"\033[032m[Finished {ftime} {htime(time.mktime(end_time)-time.mktime(start_time))}]: {cmd}\033[0m", file=log)
+        else:
+            print(f"\033[031m[Error {ftime} {htime(time.mktime(end_time)-time.mktime(start_time))}]: {cmd}\033[0m", file=log)
+    else:
+        if not os.path.exists(f'{jobname}.done'):
+            res = subprocess.run(cmd, shell=True)
+            end_time = time.gmtime()
+            if res.returncode == 0:
+                out = open(f'{jobname}.done', 'w')
+                out.close()
+                print(f"\033[032m[Finished {ftime} {htime(time.mktime(end_time)-time.mktime(start_time))}]: {cmd}\033[0m", file=log)
+            else:
+                print(f"\033[031m[Error {ftime} {htime(time.mktime(end_time)-time.mktime(start_time))}]: {cmd}\033[0m", file=log)
+        else:
+            print(f"\033[032m[Skip {ftime}]: {cmd}\033[0m", file=log)
+    return None
+    
 def rm(file):
     if os.path.isdir(file):
         shutil.rmtree(file, ignore_errors=True)
@@ -168,7 +213,8 @@ def mkdir(path):
 def run_miniprot(query_file, genome_file, output, thread, mask, skip_align, outs):
     if mask:
         cmd = f"{os.path.join(sys.path[0], 'script', 'sm2rmForFasta.py')} -i {genome_file} -o {genome_file}.tmp"
-        subprocess.run(cmd, shell=True)
+        #subprocess.run(cmd, shell=True)
+        run_cmd(cmd, jobname=None)
         genome_file = os.path.realpath(genome_file+'.tmp')
     
     #miniprot  = os.path.join(sys.path[0], 'bin', 'miniprot')
@@ -177,7 +223,8 @@ def run_miniprot(query_file, genome_file, output, thread, mask, skip_align, outs
     if skip_align:
         pass
     else:
-        subprocess.run(cmd, shell=True)
+        #subprocess.run(cmd, shell=True)
+        run_cmd(cmd, jobname=None)
     
     if mask:
         try:
@@ -198,7 +245,6 @@ def merge_region(regions):
             #merge_region[-1][1] = min(merge_region[-1][1], region[1])
     return merge_region
     
-
 miniprot_PATH, TransDecoder_PATH = check_dependencies(ORFSoftware, miniprot_PATH, TransDecoder_PATH)
 
 if os.path.dirname(prefix) != '':
@@ -250,9 +296,11 @@ for index, transcript in enumerate(clusters):
 out.close()
 
 cmd = f"{os.path.join(TransDecoder_PATH, 'util/gtf_to_alignment_gff3.pl')} {prefix}.transcript.gtf > {prefix}.transcript.gff3"
-subprocess.run(cmd, shell=True, capture_output=False)
+#subprocess.run(cmd, shell=True, capture_output=False)
+run_cmd(cmd, jobname=None)
 cmd = f"{os.path.join(TransDecoder_PATH, 'util/gtf_genome_to_cdna_fasta.pl')} {prefix}.transcript.gtf {genome_file} > {prefix}.transcript.fasta"
-subprocess.run(cmd, shell=True, capture_output=True)
+#subprocess.run(cmd, shell=True, capture_output=True)
+run_cmd(cmd, jobname=None)
 
 if os.path.dirname(prefix) == '':
     output_dir = os.getcwd()
@@ -261,38 +309,47 @@ else:
 
 if ORFSoftware=="TransDecoder":
     cmd = f"{os.path.join(TransDecoder_PATH, 'TransDecoder.LongOrfs')} -t {prefix}.transcript.fasta --genetic_code {NCBI2TransDecoder_genetic_code[genetic_code]} --output_dir {output_dir}"
-    subprocess.run(cmd, shell=True, capture_output=True)
+    #subprocess.run(cmd, shell=True, capture_output=True)
+    run_cmd(cmd, jobname=None)
     cmd = f"{os.path.join(TransDecoder_PATH, 'TransDecoder.Predict')} -t {prefix}.transcript.fasta --genetic_code {NCBI2TransDecoder_genetic_code[genetic_code]} --output_dir {output_dir}"
     if single_best_only == True:
         cmd += ' --single_best_only'
-    subprocess.run(cmd, shell=True, capture_output=True)
+    #subprocess.run(cmd, shell=True, capture_output=True)
+    run_cmd(cmd, jobname=None)
 
     cmd = f"{os.path.join(TransDecoder_PATH, 'util/cdna_alignment_orf_to_genome_orf.pl')} \
     {prefix}.transcript.fasta.transdecoder.gff3 {prefix}.transcript.gff3 {prefix}.transcript.fasta > {prefix}.transcript.genome.gff3"
-    subprocess.run(cmd, shell=True, capture_output=True)
+    #subprocess.run(cmd, shell=True, capture_output=True)
+    run_cmd(cmd, jobname=None)
     
     cmd = f"{os.path.join(sys.path[0], 'script/split_and_filter_gene_model.py')} \
     -i {prefix}.transcript.genome.gff3 -o {prefix}.gff3 --overlap {overlap}"
-    subprocess.run(cmd, shell=True)
+    #subprocess.run(cmd, shell=True)
+    run_cmd(cmd, jobname=None)
 
     cmd = f"{os.path.join(TransDecoder_PATH, 'util/gff3_file_to_proteins.pl')} \
     --gff3 {prefix}.gff3 --fasta {genome_file} --genetic_code {NCBI2TransDecoder_genetic_code[genetic_code]} --seqType prot > {prefix}.pep.fasta"
-    subprocess.run(cmd, shell=True, capture_output=True)
+    #subprocess.run(cmd, shell=True, capture_output=True)
+    run_cmd(cmd, jobname=None)
 
     cmd = f"{os.path.join(TransDecoder_PATH, 'util/gff3_file_to_proteins.pl')} \
     --gff3 {prefix}.gff3 --fasta {genome_file} --genetic_code {NCBI2TransDecoder_genetic_code[genetic_code]} --seqType CDS > {prefix}.cds.fasta"
-    subprocess.run(cmd, shell=True, capture_output=True)
+    #subprocess.run(cmd, shell=True, capture_output=True)
+    run_cmd(cmd, jobname=None)
 
     cmd = f"{os.path.join(sys.path[0], 'script/get_longest_transcript_gff3.py')} {prefix}.gff3 -o {prefix}.longest.gff3"
-    subprocess.run(cmd, shell=True, capture_output=True)
-
+    #subprocess.run(cmd, shell=True, capture_output=True)
+    run_cmd(cmd, jobname=None)
+    
     cmd = f"{os.path.join(TransDecoder_PATH, 'util/gff3_file_to_proteins.pl')} \
     --gff3 {prefix}.longest.gff3 --fasta {genome_file} --genetic_code {NCBI2TransDecoder_genetic_code[genetic_code]} --seqType prot > {prefix}.longest.pep.fasta"
-    subprocess.run(cmd, shell=True, capture_output=True)
+    #subprocess.run(cmd, shell=True, capture_output=True)
+    run_cmd(cmd, jobname=None)
 
     cmd = f"{os.path.join(TransDecoder_PATH, 'util/gff3_file_to_proteins.pl')} \
     --gff3 {prefix}.longest.gff3 --fasta {genome_file} --genetic_code {NCBI2TransDecoder_genetic_code[genetic_code]} --seqType CDS > {prefix}.longest.cds.fasta"
-    subprocess.run(cmd, shell=True, capture_output=True)
+    #subprocess.run(cmd, shell=True, capture_output=True)
+    run_cmd(cmd, jobname=None)
 
     intermediate_files = [#os.path.realpath(f'{prefix}.miniprot_output.gff3'),
                           os.path.realpath(f'{prefix}.transcript.gtf'),
@@ -307,44 +364,52 @@ if ORFSoftware=="TransDecoder":
             rm(file)
             
 elif ORFSoftware=="TD2":
-    cmd = f"TD2.LongOrfs -t {prefix}.transcript.fasta -G {genetic_code} -O {output_dir} -@ {thread}"
-    #print(cmd)
-    subprocess.run(cmd, shell=True, capture_output=True)
+    cmd = f"TD2.LongOrfs --precise -t {prefix}.transcript.fasta -G {genetic_code} -O {output_dir} -@ {thread}"
+    #subprocess.run(cmd, shell=True, capture_output=True)
+    run_cmd(cmd, jobname=None)
     
-    cmd = f"TD2.Predict -t {prefix}.transcript.fasta -G {genetic_code} -O {output_dir}"
+    cmd = f"TD2.Predict --precise -t {prefix}.transcript.fasta -G {genetic_code} -O {output_dir}"
     if single_best_only == True:
         pass
     else:
         #pass
         cmd += ' --all-good'
-    subprocess.run(cmd, shell=True, capture_output=True)
+    #subprocess.run(cmd, shell=True, capture_output=True)
+    run_cmd(cmd, jobname=None)
     
     cmd = f"{os.path.join(TransDecoder_PATH, 'util/cdna_alignment_orf_to_genome_orf.pl')} \
     {prefix}.transcript.fasta.TD2.gff3 {prefix}.transcript.gff3 {prefix}.transcript.fasta > {prefix}.transcript.genome.gff3"
-    subprocess.run(cmd, shell=True, capture_output=True)
+    #subprocess.run(cmd, shell=True, capture_output=True)
+    run_cmd(cmd, jobname=None)
     
     cmd = f"{os.path.join(sys.path[0], 'script/split_and_filter_gene_model.py')} \
     -i {prefix}.transcript.genome.gff3 -o {prefix}.gff3 --overlap {overlap}"
-    subprocess.run(cmd, shell=True)
+    #subprocess.run(cmd, shell=True)
+    run_cmd(cmd, jobname=None)
     
     cmd = f"{os.path.join(TransDecoder_PATH, 'util/gff3_file_to_proteins.pl')} \
     --gff3 {prefix}.gff3 --fasta {genome_file} --genetic_code {NCBI2TransDecoder_genetic_code[genetic_code]} --seqType prot > {prefix}.pep.fasta"
-    subprocess.run(cmd, shell=True, capture_output=True)
+    #subprocess.run(cmd, shell=True, capture_output=True)
+    run_cmd(cmd, jobname=None)
     
     cmd = f"{os.path.join(TransDecoder_PATH, 'util/gff3_file_to_proteins.pl')} \
     --gff3 {prefix}.gff3 --fasta {genome_file} --genetic_code {NCBI2TransDecoder_genetic_code[genetic_code]} --seqType CDS > {prefix}.cds.fasta"
-    subprocess.run(cmd, shell=True, capture_output=True)
+    #subprocess.run(cmd, shell=True, capture_output=True)
+    run_cmd(cmd, jobname=None)
     
     cmd = f"{os.path.join(sys.path[0], 'script/get_longest_transcript_gff3.py')} {prefix}.gff3 -o {prefix}.longest.gff3"
-    subprocess.run(cmd, shell=True, capture_output=True)
+    #subprocess.run(cmd, shell=True, capture_output=True)
+    run_cmd(cmd, jobname=None)
     
     cmd = f"{os.path.join(TransDecoder_PATH, 'util/gff3_file_to_proteins.pl')} \
     --gff3 {prefix}.longest.gff3 --fasta {genome_file} --genetic_code {NCBI2TransDecoder_genetic_code[genetic_code]} --seqType prot > {prefix}.longest.pep.fasta"
-    subprocess.run(cmd, shell=True, capture_output=True)
+    #subprocess.run(cmd, shell=True, capture_output=True)
+    run_cmd(cmd, jobname=None)
     
     cmd = f"{os.path.join(TransDecoder_PATH, 'util/gff3_file_to_proteins.pl')} \
     --gff3 {prefix}.longest.gff3 --fasta {genome_file} --genetic_code {NCBI2TransDecoder_genetic_code[genetic_code]} --seqType CDS > {prefix}.longest.cds.fasta"
-    subprocess.run(cmd, shell=True, capture_output=True)
+    #subprocess.run(cmd, shell=True, capture_output=True)
+    run_cmd(cmd, jobname=None)
     
     intermediate_files = [#os.path.realpath(f'{prefix}.miniprot_output.gff3'),
                           os.path.realpath(f'{prefix}.transcript.gtf'),
@@ -361,4 +426,4 @@ elif ORFSoftware=="TD2":
         pass
     else:
         for file in intermediate_files:
-            rm(file)             
+            rm(file)
