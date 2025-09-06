@@ -2,7 +2,14 @@
 
 # QuickProt User Guide
 
+## Update
 
+- 2025/09/06
+  1. Provides information about the running process.
+  2. Added filter_repeatPeps_from_gff3.py script for removing repeat proteins from gff3 file.
+- 2025/05/28
+  1. Provide -ORFSoftware TD2 option, you can use TD2 as a tool for ORF prediction.
+  2. Optimization of genetic code options.
 
 ##  What is quickprot？
 
@@ -74,9 +81,19 @@ cat quickprot.raw.longest.gff3 improve_busco.gff3 > genome.longest.gff.tmp
 ./bin/TransDecoder-5.7.1/util/gff3_file_to_proteins.pl --gff3 genome.longest.gff3 --fasta genome.fasta --seqType CDS  > genome.longest.cds.fasta
 ```
 
+This step can help you remove repeat proteins (e.g. ENV, Gag, Pol, RT, RH, INT, etc.), but you need to download [diamond](https://github.com/bbuchfink/diamond).
+
+```
+./script/filter_repeatPeps_from_gff3.py -q genome.longest.pep.fasta -g genome.longest.gff3
+
+## results
+## retain.gff3 —— Gene model without repeat proteins
+## discard.gff3 —— Gene model of repeat proteins
+```
+
 ## Cite quickprot:
 
 If you use quickprot, please cite:
 
-> Guisen Chen, Hehe Du, Zhenjie Cao, Ying Wu, Chen Zhang, Yongcan Zhou, Jingqun Ao, Yun Sun, Zihao Yuan. QuickProt: A Fast and Accurate Homology-Based Protein Annotation Tool for Non-Model Organism Genomes and Promoting Comparative Genomics Research.
+> Guisen Chen, Hehe Du, Zhenjie Cao, Ying Wu, Chen Zhang, Yongcan Zhou, Jingqun Ao, Yun Sun*, Zihao Yuan*. QuickProt: A Fast and Accurate Homology-Based Protein Annotation Tool for Non-Model Organism Genomes and Promoting Comparative Genomics Research.
 
