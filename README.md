@@ -4,6 +4,11 @@
 
 ## Update
 
+- 2025/09/08
+  1.  Added gtf_genome_to_cdna_fasta.py and gtf_genome_to_cdna_fasta.py script.
+  2. Input files now support .gz compressed files.
+  3. Now QuickProt can output more running details.
+
 - 2025/09/06
   1. Provides information about the running process.
   2. Added filter_repeatPeps_from_gff3.py script for removing repeat proteins from gff3 file.
@@ -11,22 +16,22 @@
   1. Provide -ORFSoftware TD2 option, you can use TD2 as a tool for ORF prediction.
   2. Optimization of genetic code options.
 
-##  What is quickprot？
+##  What is QuickProt？
 
-The quickprot algorithm is a homology-based method for predicting gene models across entire genomes, designed to rapidly construct a non-redundant set of gene models. As illustrated in Figure 1, its core principle is analogous to the blotting method. It primarily employs [miniprot](https://github.com/lh3/miniprot/) (v0.12), to align homologous protein sequences to the genome, delineates high-alignment regions to assemble pseudo-transcripts (lacking UTR regions), and predicts coding regions within these pseudo-transcripts using [TransDecoder](https://github.com/TransDecoder/TransDecoder) (v5.7.1). Subsequently, low-quality gene models are filtered out and chimeric gene models are dissected, ultimately generating a high-accuracy, non-redundant gene set.
+The QuickProt algorithm is a homology-based method for predicting gene models across entire genomes, designed to rapidly construct a non-redundant set of gene models. As illustrated in Figure 1, its core principle is analogous to the blotting method. It primarily employs [miniprot](https://github.com/lh3/miniprot/) (v0.12), to align homologous protein sequences to the genome, delineates high-alignment regions to assemble pseudo-transcripts (lacking UTR regions), and predicts coding regions within these pseudo-transcripts using [TransDecoder](https://github.com/TransDecoder/TransDecoder) (v5.7.1). Subsequently, low-quality gene models are filtered out and chimeric gene models are dissected, ultimately generating a high-accuracy, non-redundant gene set.
 
 ![Schema of quickprot algorithm](./docs/Schema_of_quickprot_algorithm.png#pic_center)
 
-<center>Fig1. Schema of quickprot algorithm</center>
+<center>Fig1. Schema of QuickProt algorithm</center>
 
 
 ## Installation:
 
-Before use, you need to install Python and Perl.
+Before use, you need to install Perl, Python, and biopython.
 
-Python3 >= 3.8, perl >= 5
+Python3 >= 3.8, perl >= 5 
 
-For ease of use, [miniprot](https://github.com/lh3/miniprot/) (v0.12) and  [TransDecoder](https://github.com/TransDecoder/TransDecoder) (v5.7.1)  software are integrated into quickprot.
+For ease of use, [miniprot](https://github.com/lh3/miniprot/) (v0.12) and  [TransDecoder](https://github.com/TransDecoder/TransDecoder) (v5.7.1)  software are integrated into QuickProt.
 
 ```
 wget https://github.com/thecgs/quickprot/archive/refs/tags/quickprot-v1.1.0.tar.gz
@@ -50,7 +55,7 @@ pip install TD2
 
 ## Usage:
 
-To  quickly  run quickprot software. like this, 
+To  quickly  run QuickProt software. like this, 
 
 ```
 ./quickprot -q protein.fasta -g genome.fasta
@@ -91,9 +96,9 @@ This step can help you remove repeat proteins (e.g. ENV, Gag, Pol, RT, RH, INT, 
 ## discard.gff3 —— Gene model of repeat proteins
 ```
 
-## Cite quickprot:
+## Cite QuickProt:
 
-If you use quickprot, please cite:
+If you use QuickProt, please cite:
 
-> Guisen Chen, Hehe Du, Zhenjie Cao, Ying Wu, Chen Zhang, Yongcan Zhou, Jingqun Ao, Yun Sun*, Zihao Yuan*. QuickProt: A Fast and Accurate Homology-Based Protein Annotation Tool for Non-Model Organism Genomes and Promoting Comparative Genomics Research.
+> Guisen Chen, Hehe Du, Zhenjie Cao, Ying Wu, Chen Zhang, Yongcan Zhou, Jingqun Ao, Yun Sun, Zihao Yuan. QuickProt: A Fast and Accurate Homology-Based Protein Annotation Tool for Non-Model Organism Genomes to Advance Comparative Genomics.
 
