@@ -75,7 +75,11 @@ new_mRNA2CDS = defaultdict(list)
 for k in mRNA2CDS:
     Key = (k[0], min([v[1] for v in mRNA2CDS[k]]), max([v[2] for v in mRNA2CDS[k]]), 
            k[1], k[3], k[4], sum([v[2] - v[1] +1 for v in mRNA2CDS[k]]))
-    new_mRNA2CDS[Key] = mRNA2CDS[k]
+    if Key[6] >= 100: # fix bug
+        new_mRNA2CDS[Key] = mRNA2CDS[k]
+    else:
+        print(Key)
+
 filter_regions = get_filter_regions(new_mRNA2CDS, overlap)
 
 cluster_genes = defaultdict(list)

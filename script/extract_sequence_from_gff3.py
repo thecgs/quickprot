@@ -93,9 +93,11 @@ def main(genome, gff3, output=None, seqtype=['prot', 'CDS'][0], genetic_code=1, 
             
     if seqtype == 'prot':
         for m in mRNAs:
+            #print(m)
             sequence = extract_sequence(CDSs[m], genome_dict, cut=True).translate(table=genetic_code, stop_symbol=stop_codon, to_stop=remove_stop_codon)
+            #print(sequence)
             if sequence[-1] == stop_codon:
-                prot_len = len(sequence) - 1 
+                prot_len = len(sequence) - 1
             else:
                 prot_len = len(sequence)
             pos_str = f"{mRNAs[m][0]}:{mRNAs[m][1]}-{mRNAs[m][2]}({mRNAs[m][3]})"
