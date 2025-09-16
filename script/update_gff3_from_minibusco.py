@@ -11,6 +11,16 @@ from Bio import SeqIO
 from collections import defaultdict
 from argparse import RawTextHelpFormatter
 
+def merge_region(regions):
+    sorted_regions = sorted(regions, key=lambda x: x[3], reverse=False)
+    merge_region = []
+    for region in sorted_regions:
+        if (len(merge_region) == 0) or ((region[3] - merge_region[-1][4]) > 1):
+            merge_region.append(list(region))
+        else:
+            merge_region[-1][4] = max(merge_region[-1][4], region[4])
+    return merge_region
+
 def get_miniprot_gff3_to_gff3(gff_file, output):
     if gff_file.endswith('.gz'):
         f = gzip.open(gff_file, mode='rt')
@@ -18,37 +28,41 @@ def get_miniprot_gff3_to_gff3(gff_file, output):
         f = open(gff_file, 'r')
         
     out = open(output, 'w')
+    mRNA2CDSs = None
     for l in f:
         if not l.startswith('#') and l.strip() !='':
             l =  l.strip().split('\t')
-            ID = l[8].split(';')[0].split('=')[1]
             if l[2] == 'mRNA':
-                g = l[0:8] + [f'ID=MG{ID[2:]};']
-                g[2] = 'gene'
-                l[8] = f'ID={ID};Parent=MG{ID[2:]};' + ';'.join(l[8].split()[0].split(';')[1:]) + ';'
-                print('\t'.join(g), file=out)
-                print('\t'.join(l), file=out)
-            elif l[2] == 'CDS':
-                e = l[0:8] + [f'ID={ID}.exon;Parent={ID};']
-                e[2] = 'exon'
-                e[7] = '.'
-                l[8] = f'ID={ID}.cds;Parent={ID};'
-                print('\t'.join(e), file=out)
-                print('\t'.join(l), file=out)
-            elif l[2] == 'stop_codon':
-                l[8] = f'ID={ID}.stop;Parent={ID};'
-                print('\t'.join(l), file=out)
-            else:
-                pass
+                if mRNA2CDSs != None:
+                    k = list(mRNA2CDSs.keys())[0]
+                    ID = k[8].split(';')[0].split('=')[1].replace('MP', '')
+                    Identity = k[8].split(';')[2].split('=')[1]
+                    Positive = k[8].split(';')[3].split('=')[1]
+                    Target = k[8].split(';')[4].split('=')[1]
+                    print('\t'.join((k[0], k[1], 'gene', k[3], k[4], '.', k[6], k[7], f"ID=MG{ID};Identity={Identity};")), file=out)
+                    print('\t'.join((k[0], k[1], k[2], k[3], k[4], k[5], k[6], k[7], 
+                                     f"ID=MP{ID};Parent=MG{ID};Identity={Identity};Positive={Positive};Target={Target};")), 
+                         file=out)
+                    for v in merge_region(regions=mRNA2CDSs[k]):
+                        print('\t'.join((v[0], v[1], 'exon', str(v[3]), str(v[4]), '.', v[6], '.',
+                                         f"ID=MP{ID}.exon;Parent=MP{ID};")), file=out)
+                        print('\t'.join((v[0], v[1], v[2], str(v[3]), str(v[4]), v[5], v[6], v[7],
+                                         f"ID=MP{ID}.cds;Parent=MP{ID};")), file=out)
+                    print(file=out)
+                mRNA = tuple(l)
+                mRNA2CDSs = {mRNA:[]}
+            elif l[2] == 'CDS' or l[2] == 'stop_codon':
+                l[2] = 'CDS'
+                l[3] = int(l[3])
+                l[4] = int(l[4])
+                CDS = l
+                mRNA2CDSs[mRNA].append(CDS)
     out.close()
     f.close()
     return None
 
 def get_best_gene_model(genome, gff_file, genetic_code, identity=0.6):
     get_miniprot_gff3_to_gff3(gff_file, output='miniprot_output_tmp.gff3')
-    
-    #gff3_file_to_proteins = os.path.join(sys.path[0], '../bin/TransDecoder-5.7.1/util/gff3_file_to_proteins.pl')
-    #cmd = f"{gff3_file_to_proteins} --gff3 miniprot_output_tmp.gff3 --fasta {genome} --genetic_code {genetic_code} --seqType prot"
     cmd = f"{os.path.join(sys.path[0], 'extract_sequence_from_gff3.py')} miniprot_output_tmp.gff3 {genome} -G {genetic_code} --seqtype prot"
     result=subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, encoding='utf-8')
     
@@ -62,38 +76,24 @@ def get_best_gene_model(genome, gff_file, genetic_code, identity=0.6):
     mRNA2feature = defaultdict(list)
     mRNA2CDSlength = defaultdict(int)
     
-    if gff_file.endswith('.gz'):
-        f = gzip.open(gff_file, mode='rt')
-    else:
-        f = open(gff_file, 'r')
-        
+    f = open("miniprot_output_tmp.gff3", 'r')
     for l in f:
         if not l.startswith('#') and l.strip() !='':
             l =  l.strip().split('\t')
-            ID = l[8].split(';')[0].split('=')[1]
-            if ID in MPID:
-                if l[2] == 'mRNA':
-                    pos = (l[0], int(l[3]), int(l[4]), l[6], l[5], float(re.search('Identity=(.*?);', l[8]).group(1)), ID)
-                    g = l[0:8] + [f'ID=MG{ID[2:]};']
-                    g[2] = 'gene'
-                    l[8] = f'ID={ID};Parent=MG{ID[2:]};' + ';'.join(l[8].split()[0].split(';')[1:]) + ';'
-                    mRNA2feature[pos].append('\t'.join(g))
+            if l[2] == 'gene':
+                ID = re.search("ID=(.*?);", l[8]).group(1).replace("MG", "MP")
+                Identity = float(re.search('Identity=(.*?);', l[8]).group(1))
+                pos = (l[0], int(l[3]), int(l[4]), l[6], l[5], Identity, ID)
+                if ID in MPID:
                     mRNA2feature[pos].append('\t'.join(l))
-                elif l[2] == 'CDS':
-                    e = l[0:8] + [f'ID={ID}.exon;Parent={ID};']
-                    e[2] = 'exon'
-                    e[7] = '.'
-                    l[8] = f'ID={ID}.cds;Parent={ID};'
-                    mRNA2feature[pos].append('\t'.join(e))
+            elif l[2] == 'mRNA' or l[2] == 'exon':
+                if ID in MPID:
+                    mRNA2feature[pos].append('\t'.join(l))
+            elif l[2] == 'CDS':
+                if ID in MPID:
                     mRNA2feature[pos].append('\t'.join(l))
                     mRNA2CDSlength[pos] += int(l[4]) - int(l[3]) + 1
-                elif l[2] == 'stop_codon':
-                    l[8] = f'ID={ID}.stop;Parent={ID};'
-                    mRNA2feature[pos].append('\t'.join(l))
-                else:
-                    pass
-    f.close()
-    
+    f.close()    
     tmp = sorted([i for i in mRNA2CDSlength if i[5] >= identity], key=lambda x: (x[0], x[1], x[3]))
     filter_res = []
     for i in tmp:
@@ -104,14 +104,14 @@ def get_best_gene_model(genome, gff_file, genetic_code, identity=0.6):
                 filter_res[-1] = i
             elif i[5] == filter_res[-1][5]:
                 if mRNA2CDSlength[i] > mRNA2CDSlength[filter_res[-1]]:
-                    filter_res[-1] = i
-                    
+                    filter_res[-1] = i      
     res = defaultdict(list)
     for i in filter_res:
         for j in mRNA2feature[i]:
             res[(i[0], i[1], i[2], i[3], mRNA2CDSlength[i])].append(j)
     return res
 
+    
 def get_pos(gff_file):
     if gff_file.endswith('.gz'):
         f = gzip.open(gff_file, mode='rt')

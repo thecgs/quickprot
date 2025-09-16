@@ -7,18 +7,20 @@ from collections import defaultdict
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="split and filter gene model.", add_help=False, 
-                                     epilog='date:2024/11/19 author:guisen chen email:thecgs001@foxmail.com')
+                                     epilog='date:2025/09/16 author:guisen chen email:thecgs001@foxmail.com')
     required = parser.add_argument_group('required arguments')
     optional = parser.add_argument_group('optional arguments')
     required.add_argument('-i', '--input', metavar='str', help='A input file of gff3 format.', required=True)
     required.add_argument('-o', '--output', metavar='str', help='A output file of gff3 format.', required=True)
     optional.add_argument('--overlap', metavar='float', type=float, default=0.8, help='If the overlap of predicted ORFs in a transcript is less than default (default: 0.8, range: 0-1), they will be dissected.')
+    optional.add_argument('--header', metavar='str', type=str, default=None, help='Add header information to a gff3 file. default=None')
     optional.add_argument('-h', '--help', action='help', help="Show program's help message and exit.")
     optional.add_argument('-v', '--version', action='version', version='v1.00', help="Show program's version number and exit.")
     args = parser.parse_args()
     infile = args.input
     outfile = args.output
     overlap = args.overlap
+    header = args.header
 
 def get_filter_regions(regions, overlap=0.8):
     filter_regions = []
@@ -87,15 +89,22 @@ for g in filter_regions:
     for m in new_mRNA2CDS:
         if g[0] == m[0] and g[3] == m[3] and g[1]<=m[1] and m[2]<=g[2]:
             cluster_genes[tuple(g)].append(m)
-            
+
+
 out = open(outfile, 'w')
+if header != None:
+    info = ''.join(["#" + i for i in header.split('\n')])
+    print(info, file=out)
+    print(file=out)
+    
 ti = 0
 gi = 0
 for gi, g in enumerate(cluster_genes):
     print(g[0], 'quickprot', 'gene', g[1], g[2], '.', g[3], '.', f'ID=QUKPGENE{gi+1};', file=out, sep='\t')
     for mi, m in enumerate(cluster_genes[g]):
         ti += 1
-        print(m[0], 'quickprot', 'mRNA', m[1], m[2], m[5], m[3], '.', f'ID=QUKPMRNA{gi+1}.p{mi+1};Parent=QUKPGENE{gi+1};Type={m[4]};', file=out, sep='\t')
+        #print(m[0], 'quickprot', 'mRNA', m[1], m[2], m[5], m[3], '.', f'ID=QUKPMRNA{gi+1}.p{mi+1};Parent=QUKPGENE{gi+1};Type={m[4]};', file=out, sep='\t')
+        print(m[0], 'quickprot', 'mRNA', m[1], m[2], m[5], m[3], '.', f'ID=QUKPMRNA{gi+1}.p{mi+1};Parent=QUKPGENE{gi+1};', file=out, sep='\t')
         for ei, e in enumerate(new_mRNA2CDS[m]):
             print(e[0], 'quickprot', 'exon', e[1], e[2], '.', e[3], '.', f'ID=QUKPMRNA{gi+1}.p{mi+1}.exon{ei+1};Parent=QUKPMRNA{gi+1}.p{mi+1};', file=out, sep='\t')
             print(e[0], 'quickprot', 'CDS', e[1], e[2], '.', e[3], e[4], f'ID=QUKPMRNA{gi+1}.p{mi+1}.cds{ei+1};Parent=QUKPMRNA{gi+1}.p{mi+1};', file=out, sep='\t')

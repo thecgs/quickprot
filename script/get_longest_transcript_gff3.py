@@ -6,7 +6,7 @@ import sys
 import argparse
 from collections import defaultdict
 
-def get_longest_transcript(inputfile, outputfile=None):
+def get_longest_transcript(inputfile, outputfile=None, header=None):
     
     genes = defaultdict(list)
     mRNAs = defaultdict(list)
@@ -57,7 +57,12 @@ def get_longest_transcript(inputfile, outputfile=None):
         out = sys.stdout
     else:
         out = open(outputfile, 'w')
-        
+    
+    if header != None:
+        info = ''.join(["#" + i for i in header.split('\n')])
+        print(info, file=out)
+        print(file=out)
+    
     for gene in gene2mRNA:
         longest_CDS_len = 0
         longest_mRNA = ''
@@ -93,9 +98,11 @@ if __name__ == '__main__':
                           help=f'A output file of gff3 format. defualt=None')
     optional.add_argument('-h', '--help', action='help', 
                           help="Show program's help message and exit.")
+    optional.add_argument('--header', metavar='str', type=str, default=None,
+                          help='Add header information to a gff3 file. default=None')
     optional.add_argument('-v', '--version', action='version', version='v1.00',  
                           help="Show program's version number and exit.")
     args = parser.parse_args()
     
-    get_longest_transcript(inputfile=args.input, outputfile=args.output)
+    get_longest_transcript(inputfile=args.input, outputfile=args.output, header=args.header)
     

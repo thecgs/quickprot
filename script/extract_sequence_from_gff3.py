@@ -44,7 +44,7 @@ def parser_gff3(gff3):
                 mRNAID = re.search('ID=(.*?)[;,\n]', l[8]).group(1)
                 try:
                     geneID = re.search('Parent=(.*?)[;,\n]', l[8]).group(1)
-                    gene2mRNA[mRNAID] = geneID
+                    mRNA2gene[mRNAID] = geneID
                 except:
                     pass
                 mRNAs[mRNAID] = (l[0], min(int(l[3]), int(l[4])), max(int(l[3]), int(l[4])), l[6])
