@@ -7,7 +7,7 @@
 - 2025/09/16
   1. Added add_type_gff3.py script.
   2. Optimized prediction of stop codon.
-  3. Three new options have been added, namely "-c", "-ps", "-ms", and "-an", for quality control of protein mapping, rational use to reduce pseudogenes.
+  3. Four new options have been added, namely "-c", "-ps", "-ms", and "-an", for quality control of protein mapping, rational use to reduce pseudogenes.
 
 - 2025/09/08
   1.  Added gtf_genome_to_cdna_fasta.py and gtf_genome_to_cdna_fasta.py script.
