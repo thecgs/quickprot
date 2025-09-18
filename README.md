@@ -7,7 +7,7 @@
 - 2025/09/16
   1. Added add_type_gff3.py script.
   2. Optimized prediction of stop codon.
-  3. Three new options have been added, namely "-c", "-ps' and" -an ', for quality control of protein mapping, rational use to reduce pseudogenes.
+  3. Three new options have been added, namely "-c", "-ps", "-ms", and "-an", for quality control of protein mapping, rational use to reduce pseudogenes.
 
 - 2025/09/08
   1.  Added gtf_genome_to_cdna_fasta.py and gtf_genome_to_cdna_fasta.py script.
@@ -23,7 +23,7 @@
 
 ##  What is QuickProt？
 
-The QuickProt algorithm is a homology-based method for predicting gene models across entire genomes, designed to rapidly construct a non-redundant set of gene models. As illustrated in Figure 1, its core principle is analogous to the blotting method. It primarily employs [miniprot](https://github.com/lh3/miniprot/) (v0.12), to align homologous protein sequences to the genome, delineates high-alignment regions to assemble pseudo-transcripts (lacking UTR regions), and predicts coding regions within these pseudo-transcripts using [TransDecoder](https://github.com/TransDecoder/TransDecoder) (v5.7.1). Subsequently, low-quality gene models are filtered out and chimeric gene models are dissected, ultimately generating a high-accuracy, non-redundant gene set.
+The QuickProt algorithm is a homology-based method for predicting gene models across entire genomes, designed to rapidly construct a non-redundant set of gene models. As illustrated in Figure 1, its core principle is analogous to the blotting method. It primarily employs [miniprot](https://github.com/lh3/miniprot/) (v0.18), to align homologous protein sequences to the genome, delineates high-alignment regions to assemble pseudo-transcripts (lacking UTR regions), and predicts coding regions within these pseudo-transcripts using [TransDecoder](https://github.com/TransDecoder/TransDecoder) (v5.7.1). Subsequently, low-quality gene models are filtered out and chimeric gene models are dissected, ultimately generating a high-accuracy, non-redundant gene set.
 
 ![Schema of quickprot algorithm](./docs/Schema_of_quickprot_algorithm.png#pic_center)
 
@@ -36,7 +36,7 @@ Before use, you need to install Perl, Python, and biopython.
 
 Python3 >= 3.8, perl >= 5 
 
-For ease of use, [miniprot](https://github.com/lh3/miniprot/) (v0.12) and  [TransDecoder](https://github.com/TransDecoder/TransDecoder) (v5.7.1)  software are integrated into QuickProt.
+For ease of use, [miniprot](https://github.com/lh3/miniprot/) (v0.18) and  [TransDecoder](https://github.com/TransDecoder/TransDecoder) (v5.7.1)  software are integrated into QuickProt.
 
 ```
 wget https://github.com/thecgs/quickprot/archive/refs/tags/quickprot-v1.8.0.tar.gz
