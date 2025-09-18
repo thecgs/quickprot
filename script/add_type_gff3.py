@@ -2,6 +2,7 @@
 # coding: utf-8
 
 import re
+import gzip
 import argparse
 from Bio import SeqIO
 

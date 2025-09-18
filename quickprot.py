@@ -6,6 +6,7 @@ import re
 import sys
 import gzip
 import glob
+import math
 import shutil
 import argparse
 import subprocess
@@ -46,7 +47,7 @@ Translate Tables/Genetic Codes:
 32: Balanophoraceae Plastid                          ## TransDecoder not supported
 33: Cephalodiscidae Mitochondrial                    ## TransDecoder not supported
 Reference website: https://www.ncbi.nlm.nih.gov/Taxonomy/taxonomyhome.html/index.cgi?chapter=tgencodes
-""", add_help=False, epilog='date:2024/11/19 author:guisen chen email:thecgs001@foxmail.com', formatter_class=RawTextHelpFormatter)
+""", add_help=False, epilog='date:2025/09/18 author:guisen chen email:thecgs001@foxmail.com', formatter_class=RawTextHelpFormatter)
     required = parser.add_argument_group('required arguments')
     optional = parser.add_argument_group('optional arguments')
     required.add_argument('-q', '--query', metavar='str', help='A file of query protein fasta format, supports .gz compressed files.', required=True)
@@ -58,8 +59,10 @@ Reference website: https://www.ncbi.nlm.nih.gov/Taxonomy/taxonomyhome.html/index
     optional.add_argument('-ot', '--outs', metavar='float', type=float, default=0.95, help='Output score at least bestScore (0-1). default=0.95')
     optional.add_argument('-ps', '--preserve_the_starting_AA_number', metavar='int', type=int, default=0, 
                           help='The query sequence is consistent with the first [INT] amino acids of the target sequence, which can effectively inhibit pseudogenes. default=0')
+    optional.add_argument('-ms', '--max_in_stop_number', metavar='int', type=str, default=math.inf, 
+                          help='The maximum number of allowed in-frame stop codons in the amino acids aligned (0-inf) , which can effectively inhibit pseudogenes. default=inf')
     optional.add_argument('-an', '--align_number', metavar='int', type=int, default=0, 
-                          help='It means that only when there are [INT] protein alignments in a genomic region can the region be defaulted to be a coding region. default=0')
+                          help='It means that only when there are [INT] protein alignments in a genomic region can the region be defaulted to be a coding region. default=inf')
     optional.add_argument('-op','--overlap', metavar='float', type=float, default=0.8, help="""If the overlap of predicted ORFs in a transcript is less than default value (0-1). default=0.8, 
 they will be dissected.""")
     optional.add_argument('-t', '--thread', metavar='int', type=int, default=os.cpu_count(), help=f'Thread number of run miniprot sortware. defualt={os.cpu_count()}')
@@ -77,7 +80,7 @@ the fused ORF will be split in subsequent analysis.""")
                           help="Tool for selecting predicted ORFs, TransDecoder or TD2. default=TransDecoder", default="TransDecoder")
     optional.add_argument('--debug_info', action='store_false', help="Display all software output details. default=False")
     optional.add_argument('-h', '--help', action='help', help="Show program's help message and exit.")
-    optional.add_argument('-v', '--version', action='version', version='v1.8', help="Show program's version number and exit.")
+    optional.add_argument('-v', '--version', action='version', version='v1.8.0', help="Show program's version number and exit.")
     args = parser.parse_args()
     genetic_code = args.genetic_code
     query_file = os.path.realpath(args.query)
@@ -88,6 +91,10 @@ the fused ORF will be split in subsequent analysis.""")
     cover = args.cover
     align_number = args.align_number
     preserve_the_starting_AA_number = args.preserve_the_starting_AA_number
+    if args.max_in_stop_number == 'inf':
+        in_stop_number = math.inf
+    else:
+        in_stop_number = int(args.max_in_stop_number)
     prefix = args.prefix
     single_best_only = args.single_best_only
     skip_align = args.skip_align
@@ -126,8 +133,8 @@ NCBI2TransDecoder_genetic_code = {1: "Universal",
 def check_dependencies(ORFSoftware, miniprot_PATH=None, TransDecoder_PATH=None):
     print("Check dependencies...")
     if miniprot_PATH==None:
-        if os.path.exists(os.path.join(sys.path[0], 'bin/miniprot-0.12/miniprot')):
-            miniprot_PATH = os.path.join(sys.path[0], 'bin/miniprot-0.12/miniprot')
+        if os.path.exists(os.path.join(sys.path[0], 'bin/miniprot-0.18/miniprot')):
+            miniprot_PATH = os.path.join(sys.path[0], 'bin/miniprot-0.18/miniprot')
         else:
             for PATH in os.environ['PATH'].split(':'):
                 if os.path.exists(os.path.join(PATH, 'miniprot')):
@@ -274,7 +281,7 @@ def merge_region(regions, align_number=0):
         merge_region = list(filter(lambda x:x[4] >= align_number, merge_region))
     return merge_region
 
-def transcript_assembly(miniprot_output, identity, cover, prefix, query_file, preserve_the_starting_AA_number=0, align_number=0):
+def transcript_assembly(miniprot_output, identity, cover, prefix, query_file, preserve_the_starting_AA_number=0, align_number=0, in_stop_number=0):
     transcript_regions = set()
     exon_regions = set()
     if preserve_the_starting_AA_number==0:
@@ -286,7 +293,12 @@ def transcript_assembly(miniprot_output, identity, cover, prefix, query_file, pr
                     l = l.strip().split('\t')
                     if l[2] == 'mRNA':
                         _status = False
-                        if float(re.search('Identity=(.*?);', l[8]).group(1)) >= identity and query_coverage >= cover:
+                        try:
+                            InStop = int(re.search('StopCodon=(.*?);', l[8]).group(1))
+                        except:
+                            InStop = 0
+                        if float(re.search('Identity=(.*?);', l[8]).group(1)) >= identity and \
+                        query_coverage >= cover and InStop <= in_stop_number:
                             transcript_region = (l[0], int(l[3]), int(l[4]), l[6])
                             transcript_regions.add(transcript_region)
                         else:
@@ -316,10 +328,16 @@ def transcript_assembly(miniprot_output, identity, cover, prefix, query_file, pr
                     if l[2] == 'mRNA':
                         _status = False
                         
+                        try:
+                            InStop = int(re.search('StopCodon=(.*?);', l[8]).group(1))
+                        except:
+                            InStop = 0
+                            
                         if target_AA_dict[re.search('Target=(.*?) ', l[8]).group(1)] != query_AA:
                             _status = True
-                            
-                        if float(re.search('Identity=(.*?);', l[8]).group(1)) >= identity and query_coverage >= cover:
+                        
+                        if float(re.search('Identity=(.*?);', l[8]).group(1)) >= identity and \
+                        query_coverage >= cover and InStop <= in_stop_number:
                             transcript_region = (l[0], int(l[3]), int(l[4]), l[6])
                             transcript_regions.add(transcript_region)
                         else:
@@ -353,7 +371,6 @@ def transcript_assembly(miniprot_output, identity, cover, prefix, query_file, pr
                   'gene_id "QUKPGENE{}"; transcript_id "QUKPMRNA{}";'.format(index+1, index+1), sep='\t', file=out)
     out.close()
     return None
-
 ## main
 miniprot_PATH, TransDecoder_PATH = check_dependencies(ORFSoftware, miniprot_PATH, TransDecoder_PATH)
 
@@ -365,7 +382,7 @@ miniprot_output = prefix + '.' + os.path.splitext(os.path.basename(query_file))[
 run_miniprot(query_file=query_file, genome_file=genome_file, output=miniprot_output, 
              thread=thread, mask=mask, skip_align=skip_align, outs=args.outs)
 
-transcript_assembly(miniprot_output, identity, cover, prefix, query_file, preserve_the_starting_AA_number, align_number)
+transcript_assembly(miniprot_output, identity, cover, prefix, query_file, preserve_the_starting_AA_number, align_number, in_stop_number)
 
 cmd = f"{os.path.join(TransDecoder_PATH, 'util/gtf_to_alignment_gff3.pl')} {prefix}.transcript.gtf > {prefix}.transcript.gff3"
 #subprocess.run(cmd, shell=True, capture_output=False)

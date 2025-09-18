@@ -49,6 +49,8 @@ def extract_sequence(pos, genome_dict):
 def main(genome, gtf, output=None):
     if output == None:
         out = sys.stdout
+    elif output.endswith('.gz'):
+        out = gzip(output, 'wt')
     else:
         out = open(output, 'w')
         

@@ -39,9 +39,9 @@ Python3 >= 3.8, perl >= 5
 For ease of use, [miniprot](https://github.com/lh3/miniprot/) (v0.12) and  [TransDecoder](https://github.com/TransDecoder/TransDecoder) (v5.7.1)  software are integrated into QuickProt.
 
 ```
-wget https://github.com/thecgs/quickprot/archive/refs/tags/quickprot-v1.1.0.tar.gz
-tar -zxvf quickprot-v1.1.0.tar.gz
-cd quickprot-v1.1.0
+wget https://github.com/thecgs/quickprot/archive/refs/tags/quickprot-v1.8.0.tar.gz
+tar -zxvf quickprot-v1.8.0.tar.gz
+cd quickprot-v1.8.0
 ./quickprot -h
 ```
 

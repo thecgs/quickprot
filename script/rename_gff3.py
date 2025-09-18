@@ -3,6 +3,7 @@
 
 import re
 import sys
+import gzip
 import argparse
 
 if __name__ == '__main__':
@@ -32,6 +33,8 @@ gene2mRNA = {}
 
 if inputfile == '-':
     f = sys.stdin
+elif inputfile.endswith('.gz'):
+    f = gzip.open(inputfile, 'rt')
 else:
     f = open(inputfile, 'r')
     
@@ -62,6 +65,8 @@ prefixs = {"three_prime_UTR":"utr3",
 
 if outputfile == None:
     out = sys.stdout
+elif outputfile.endswith('.gz'):
+    out = open(outputfile, 'wt')
 else:
     out = open(outputfile, 'w')
     

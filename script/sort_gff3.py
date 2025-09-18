@@ -3,6 +3,7 @@
 
 import re
 import sys
+import gzip
 import argparse
 from natsort import natsorted
 
@@ -11,9 +12,9 @@ if __name__ == '__main__':
                                      epilog='date:2024/11/18 author:guisen chen email:thecgs001@foxmail.com')
     required = parser.add_argument_group('required arguments')
     optional = parser.add_argument_group('optional arguments')
-    required.add_argument('input', metavar='str',
+    required.add_argument('input', metavar='gff3',
                           help='A input file of gff3 format.')
-    optional.add_argument('-s', '--software', help='Change the source of the second line of gff3.', default=None)
+    optional.add_argument('-s', '--software', metavar='str',help='Change the source of the second line of gff3.', default=None)
     optional.add_argument('-o', '--output', metavar='str', default=None,  
                           help=f'A output file of gff3 format. defualt=None')
     optional.add_argument('-h', '--help', action='help', 
@@ -37,6 +38,8 @@ gene2mRNA = {}
 
 if inputfile == '-':
     f = sys.stdin
+elif inputfile.endswith('.gz'):
+    f = gzip.open(inputfile, 'rt')
 else:
     f = open(inputfile, 'r')
 
@@ -73,6 +76,8 @@ for l in f:
 
 if outputfile == None:
     out = sys.stdout
+elif outputfile.endswith('.gz'):
+    out = gzip.open(outputfile, 'wt')
 else:
     out = open(outputfile, 'w')
     

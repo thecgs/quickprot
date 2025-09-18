@@ -4,6 +4,7 @@
 import os
 import re
 import sys
+import gzip
 import argparse
 from collections import defaultdict
 
@@ -20,37 +21,40 @@ def get_Data(gff3_file):
     exon_nums = defaultdict(int)
     intron_nums = defaultdict(int)
     
-    with open(gff3_file, 'r')  as f:
-        for l in f:
-            if not l.startswith('#') and l.strip() != '':
-                l = l.split('\t')
-                if l[2] == "gene":
-                    geneID = re.search('ID=(.*?)[;,\n]', l[8]).group(1)
-                    gene_lens[geneID] = int(l[4]) - int(l[3]) + 1
-
-                elif l[2] == "mRNA":
-                #elif bool(re.search('RNA', l[2], flags=re.I)):   #include mRNA, tRNA, miRNA ...
-                    mRNAID = re.search('ID=(.*?)[;,\n]', l[8]).group(1)
-                    geneID = re.search('Parent=(.*?)[;,\n]', l[8]).group(1)
-                    gene2mRNA[geneID].append(mRNAID)
-                    mRNA_lens[mRNAID] = int(l[4]) - int(l[3]) + 1
-
-                elif l[2] == "CDS":
-                    mRNAID = re.search('Parent=(.*?)[;,\n]', l[8]).group(1)
-                    if mRNAID in CDS_lens:
-                        CDS_lens[mRNAID] += int(l[4]) - int(l[3]) + 1
-                    else:
-                        CDS_lens[mRNAID] = int(l[4]) - int(l[3]) + 1
-                    CDS_nums[mRNAID] += 1
-                    
-                elif l[2] == "exon":
-                    mRNAID = re.search('Parent=(.*?)[;,\n]', l[8]).group(1)
-                    if mRNAID in exon_lens:
-                        exon_lens[mRNAID] += int(l[4]) - int(l[3]) + 1
-                    else:
-                        exon_lens[mRNAID] = int(l[4]) - int(l[3]) + 1
-                    exon_nums[mRNAID] += 1
-                    
+    if gff3_file.endswith('.gz'):
+        f = gzip.open(gff3_file, 'rt')
+    else:
+        f = open(gff3_file, 'r')
+    
+    for l in f:
+        if not l.startswith('#') and l.strip() != '':
+            l = l.split('\t')
+            if l[2] == "gene":
+                geneID = re.search('ID=(.*?)[;,\n]', l[8]).group(1)
+                gene_lens[geneID] = int(l[4]) - int(l[3]) + 1
+            elif l[2] == "mRNA":
+            #elif bool(re.search('RNA', l[2], flags=re.I)):   #include mRNA, tRNA, miRNA ...
+                mRNAID = re.search('ID=(.*?)[;,\n]', l[8]).group(1)
+                geneID = re.search('Parent=(.*?)[;,\n]', l[8]).group(1)
+                gene2mRNA[geneID].append(mRNAID)
+                mRNA_lens[mRNAID] = int(l[4]) - int(l[3]) + 1
+            elif l[2] == "CDS":
+                mRNAID = re.search('Parent=(.*?)[;,\n]', l[8]).group(1)
+                if mRNAID in CDS_lens:
+                    CDS_lens[mRNAID] += int(l[4]) - int(l[3]) + 1
+                else:
+                    CDS_lens[mRNAID] = int(l[4]) - int(l[3]) + 1
+                CDS_nums[mRNAID] += 1
+                
+            elif l[2] == "exon":
+                mRNAID = re.search('Parent=(.*?)[;,\n]', l[8]).group(1)
+                if mRNAID in exon_lens:
+                    exon_lens[mRNAID] += int(l[4]) - int(l[3]) + 1
+                else:
+                    exon_lens[mRNAID] = int(l[4]) - int(l[3]) + 1
+                exon_nums[mRNAID] += 1
+    f.close()
+    
     for mRNAID in exon_nums:
         intron_nums[mRNAID] = exon_nums[mRNAID] + 1
         
@@ -175,5 +179,3 @@ if __name__ == '__main__':
                           help="Show program's version number and exit.")
     args = parser.parse_args()
     main(gff3_files=args.input, output=args.output)
-
-

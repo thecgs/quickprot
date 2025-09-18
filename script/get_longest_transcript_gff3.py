@@ -3,6 +3,7 @@
 
 import re
 import sys
+import gzip
 import argparse
 from collections import defaultdict
 
@@ -16,6 +17,8 @@ def get_longest_transcript(inputfile, outputfile=None, header=None):
     
     if inputfile == '-':
         f = sys.stdin
+    elif inputfile.endswith('.gz'):
+        f = gzip.open(inputfile, 'rt')
     else:
         f = open(inputfile, 'r')
         
@@ -55,6 +58,8 @@ def get_longest_transcript(inputfile, outputfile=None, header=None):
     
     if outputfile == None:
         out = sys.stdout
+    elif outputfile.endswith('.gz'):
+        out = gzip.open(outputfile, 'wt')
     else:
         out = open(outputfile, 'w')
     
