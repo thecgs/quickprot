@@ -47,7 +47,7 @@ Translate Tables/Genetic Codes:
 32: Balanophoraceae Plastid                          ## TransDecoder not supported
 33: Cephalodiscidae Mitochondrial                    ## TransDecoder not supported
 Reference website: https://www.ncbi.nlm.nih.gov/Taxonomy/taxonomyhome.html/index.cgi?chapter=tgencodes
-""", add_help=False, epilog='date:2025/09/18 author:guisen chen email:thecgs001@foxmail.com', formatter_class=RawTextHelpFormatter)
+""", add_help=False, epilog='Date:2025/09/18 Author:Guisen Chen Email:thecgs001@foxmail.com', formatter_class=RawTextHelpFormatter)
     required = parser.add_argument_group('required arguments')
     optional = parser.add_argument_group('optional arguments')
     required.add_argument('-q', '--query', metavar='str', help='A file of query protein fasta format, supports .gz compressed files.', required=True)

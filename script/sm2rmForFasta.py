@@ -2,14 +2,18 @@
 # coding: utf-8
 
 import sys
+import gzip
 import argparse
 from Bio import SeqIO
 
 def main(infile, outfile):
     if outfile == None:
         out = sys.stdout
+    elif outfile.endswith('.gz'):
+        out = gzip.open(outfile, 'rt')
     else:
         out = open(outfile, 'w')
+
     for record in SeqIO.parse(infile, 'fasta'):
         print(f'>{record.id}', file=out)
         seqence = ''
@@ -24,7 +28,7 @@ def main(infile, outfile):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Soft-masked (dna_sm) genome convert to masked(dna_rm) genome.',  add_help=False,
-                                     epilog='date:2024/03/14 author:guisen chen email:thecgs001@foxmail.com')
+                                     epilog='Date:2024/03/14 Author:Guisen Chen Email:thecgs001@foxmail.com')
     required = parser.add_argument_group('required arguments')
     optional = parser.add_argument_group('optional arguments')
     required.add_argument('-i',  '--input',  metavar='str',  help='Input file of fasta format',  required=True)

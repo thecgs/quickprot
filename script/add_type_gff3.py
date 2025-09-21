@@ -8,7 +8,7 @@ from Bio import SeqIO
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Adding amino acid type to gff3 file.", add_help=False, 
-                                     epilog='date:2025/09/16 author:guisen chen email:thecgs001@foxmail.com')
+                                     epilog='Date:2025/09/16 Author:Guisen Chen Email:thecgs001@foxmail.com')
     required = parser.add_argument_group('required arguments')
     optional = parser.add_argument_group('optional arguments')
     required.add_argument('gff3', metavar='gff3', help='A input file of gff3 format.')

@@ -139,8 +139,8 @@ prefix = "Query2RepeatPeps"
 db = os.path.join(os.path.dirname(sys.path[0]), "lib", "RepeatPeps.lib")
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='filter repeat protein from gff3 file.', add_help=False,
-                                     epilog='date:2025/09/06 author:guisen chen email:thecgs001@foxmail.com')
+    parser = argparse.ArgumentParser(description='Filter repeat protein from gff3 file.', add_help=False,
+                                     epilog='Date:2025/09/06 Author:Guisen Chen Email:thecgs001@foxmail.com')
     required = parser.add_argument_group('required arguments')
     optional = parser.add_argument_group('optional arguments')
     

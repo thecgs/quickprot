@@ -8,7 +8,7 @@ import argparse
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Rename for gene ID from gff3 format file.',  add_help=False,
-                                     epilog='date:2024/11/07 author:guisen chen email:thecgs001@foxmail.com')
+                                     epilog='Date:2024/11/07 Author:Guisen Chen Email:thecgs001@foxmail.com')
     required = parser.add_argument_group('required arguments')
     optional = parser.add_argument_group('optional arguments')
     required.add_argument('input', metavar='gff3', 
@@ -59,7 +59,7 @@ for l in f:
                 features[mRNAID].append(l[0:8])
             else:
                 features.setdefault(mRNAID, [l[0:8]])
-
+f.close()
 prefixs = {"three_prime_UTR":"utr3",
           "five_prime_UTR":"utr5"}
 

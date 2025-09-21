@@ -165,8 +165,8 @@ def main(gff3_files, output=None):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='stat gff3 file.',  add_help=False,
-                                     epilog='date:2024/11/08 author:guisen chen email:thecgs001@foxmail.com')
+    parser = argparse.ArgumentParser(description='Stat gff3 file.',  add_help=False,
+                                     epilog='Date:2024/11/08 Author:Guisen Chen Email:thecgs001@foxmail.com')
     required = parser.add_argument_group('required arguments')
     optional = parser.add_argument_group('optional arguments')
     required.add_argument('input', metavar='gff3', nargs="+", 

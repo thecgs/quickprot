@@ -24,10 +24,16 @@ def merge_region(regions):
 def get_miniprot_gff3_to_gff3(gff_file, output):
     if gff_file.endswith('.gz'):
         f = gzip.open(gff_file, mode='rt')
+    elif gff_file == '-':
+        f = sys.stdin
     else:
         f = open(gff_file, 'r')
-        
-    out = open(output, 'w')
+    
+    if output == None:
+        out = sys.stdout
+    else:
+        out = open(output, 'w')
+
     mRNA2CDSs = None
     for l in f:
         if not l.startswith('#') and l.strip() !='':
@@ -206,13 +212,13 @@ Translate Tables/Genetic Codes:
 Reference website: https://www.ncbi.nlm.nih.gov/Taxonomy/taxonomyhome.html/index.cgi?chapter=tgencodes
 
 """, add_help=False, 
-                                     epilog='date:2024/11/27 author:guisen chen email:thecgs001@foxmail.com', formatter_class=RawTextHelpFormatter)
+    epilog='Date:2024/11/27 Author:Guisen Chen Email:thecgs001@foxmail.com', formatter_class=RawTextHelpFormatter)
     required = parser.add_argument_group('required arguments')
     optional = parser.add_argument_group('optional arguments')
     required.add_argument('-r', '--raw_gff3', metavar='str', help='A file of gff3 format from raw gff3.', required=True)
     required.add_argument('-m', '--miniprot_gff3', metavar='str', help='A file gff3 format from compleasm, call named "miniprot_output.gff".', required=True)
     required.add_argument('-g', '--genome', metavar='str', help='A genome file fasta format.', required=True)
-    required.add_argument('-o', '--output', metavar='str', help='A output update file of gff3 format.', required=True)
+    optional.add_argument('-o', '--output', metavar='str', help='A output update file of gff3 format. default=None', default=None)
     optional.add_argument('-i', '--identity', metavar='float', type=float, default=0.6, help='Alignment identity (0-1). default=0.6')
     optional.add_argument('-l', '--min_cds_len', metavar='int', type=int, default=300, help='Minimum gene length. default=300')
     optional.add_argument('-G', '--genetic_code', metavar='int', type=int, default=1, help="Genetic code. default=1")

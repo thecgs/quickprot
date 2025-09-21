@@ -64,7 +64,7 @@ def main(genome, gtf, output=None):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Get cDNA from genome, similar to gtf_genome_to_cdna_fasta.pl script.",
-                                     add_help=False, epilog='date:2025/09/08 author:guisen chen email:thecgs001@foxmail.com',
+                                     add_help=False, epilog='Date:2025/09/08 Author:Guisen Chen Email:thecgs001@foxmail.com',
                                      formatter_class=RawTextHelpFormatter)
     required = parser.add_argument_group('required arguments')
     optional = parser.add_argument_group('optional arguments')

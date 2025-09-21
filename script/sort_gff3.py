@@ -9,7 +9,7 @@ from natsort import natsorted
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Sort gff3 file.',  add_help=False,
-                                     epilog='date:2024/11/18 author:guisen chen email:thecgs001@foxmail.com')
+                                     epilog='Date:2024/11/18 Author:Guisen Chen Email:thecgs001@foxmail.com')
     required = parser.add_argument_group('required arguments')
     optional = parser.add_argument_group('optional arguments')
     required.add_argument('input', metavar='gff3',
@@ -73,6 +73,7 @@ for l in f:
                 features[mRNAID].append(l)
             else:
                 features.setdefault(mRNAID, [l])
+f.close()
 
 if outputfile == None:
     out = sys.stdout

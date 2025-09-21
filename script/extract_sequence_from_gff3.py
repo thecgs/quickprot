@@ -143,7 +143,7 @@ Translate Tables/Genetic Codes:
 33: Cephalodiscidae Mitochondrial
 Reference website: https://www.ncbi.nlm.nih.gov/Taxonomy/taxonomyhome.html/index.cgi?chapter=tgencodes
 
-""", add_help=False, epilog='date:2025/09/08 author:guisen chen email:thecgs001@foxmail.com', formatter_class=RawTextHelpFormatter)
+""", add_help=False, epilog='Date:2025/09/08 Author:Guisen Chen Email:thecgs001@foxmail.com', formatter_class=RawTextHelpFormatter)
     required = parser.add_argument_group('required arguments')
     optional = parser.add_argument_group('optional arguments')
     required.add_argument('gff3', metavar='gff3', 

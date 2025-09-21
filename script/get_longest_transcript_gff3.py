@@ -50,7 +50,8 @@ def get_longest_transcript(inputfile, outputfile=None, header=None):
                     features[mRNAID].append(l)
                 except:
                     pass
-   
+    f.close()
+
     no_CDS_mRNA = []  ##remove no CDS mRNA from NCBI download gff3
     for mRNA in mRNAs:
         if mRNA not in CDS_lens:
@@ -93,8 +94,8 @@ def get_longest_transcript(inputfile, outputfile=None, header=None):
     return None
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='get longest trascript from gff3 base on CDS length.',  add_help=False,
-                                     epilog='date:2024/08/04 author:guisen chen email:thecgs001@foxmail.com')
+    parser = argparse.ArgumentParser(description='Get longest trascript from gff3 base on CDS length.',  add_help=False,
+                                     epilog='Date:2024/08/04 Author:Guisen Chen Email:thecgs001@foxmail.com')
     required = parser.add_argument_group('required arguments')
     optional = parser.add_argument_group('optional arguments')
     required.add_argument('input', metavar='gff3',
