@@ -6,8 +6,8 @@ import argparse
 from collections import defaultdict
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="split and filter gene model.", add_help=False, 
-                                     epilog='date:2025/09/16 author:guisen chen email:thecgs001@foxmail.com')
+    parser = argparse.ArgumentParser(description="Split and filter gene model.", add_help=False, 
+                                     epilog='Date:2025/09/16 Author:Guisen Chen Email:thecgs001@foxmail.com')
     required = parser.add_argument_group('required arguments')
     optional = parser.add_argument_group('optional arguments')
     required.add_argument('-i', '--input', metavar='str', help='A input file of gff3 format.', required=True)
