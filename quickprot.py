@@ -59,10 +59,10 @@ Reference website: https://www.ncbi.nlm.nih.gov/Taxonomy/taxonomyhome.html/index
     optional.add_argument('-ot', '--outs', metavar='float', type=float, default=0.95, help='Output score at least bestScore (0-1). default=0.95')
     optional.add_argument('-ps', '--preserve_the_starting_AA_number', metavar='int', type=int, default=0, 
                           help='The query sequence is consistent with the first [INT] amino acids of the target sequence, which can effectively inhibit pseudogenes. default=0')
-    optional.add_argument('-ms', '--max_in_stop_number', metavar='int', type=str, default=math.inf, 
+    optional.add_argument('-ms', '--max_in_stop_number', metavar='int', type=str, default="inf", 
                           help='The maximum number of allowed in-frame stop codons in the amino acids aligned (0-inf) , which can effectively inhibit pseudogenes. default=inf')
     optional.add_argument('-an', '--align_number', metavar='int', type=int, default=0, 
-                          help='It means that only when there are [INT] protein alignments in a genomic region can the region be defaulted to be a coding region. default=inf')
+                          help='It means that only when there are [INT] protein alignments in a genomic region can the region be defaulted to be a coding region. default=0')
     optional.add_argument('-op','--overlap', metavar='float', type=float, default=0.8, help="""If the overlap of predicted ORFs in a transcript is less than default value (0-1). default=0.8, 
 they will be dissected.""")
     optional.add_argument('-t', '--thread', metavar='int', type=int, default=os.cpu_count(), help=f'Thread number of run miniprot sortware. defualt={os.cpu_count()}')
@@ -90,7 +90,10 @@ the fused ORF will be split in subsequent analysis.""")
     identity = args.identity
     cover = args.cover
     align_number = args.align_number
-    preserve_the_starting_AA_number = args.preserve_the_starting_AA_number
+    if args.preserve_the_starting_AA_number == "inf":
+        preserve_the_starting_AA_number = math.inf
+    else:
+        preserve_the_starting_AA_number = int(args.preserve_the_starting_AA_number)
     if args.max_in_stop_number == 'inf':
         in_stop_number = math.inf
     else:
@@ -180,7 +183,7 @@ def check_dependencies(ORFSoftware, miniprot_PATH=None, TransDecoder_PATH=None):
     return miniprot_PATH, TransDecoder_PATH
 
 def run_cmd(cmd, jobname=None, capture_output=False):
-    
+    runing_status = True
     import sys
     import time
     import subprocess
@@ -210,6 +213,7 @@ def run_cmd(cmd, jobname=None, capture_output=False):
         if res.returncode == 0:
             print(f"\033[032m[Finished {ftime} {htime(time.mktime(end_time)-time.mktime(start_time))}]: {cmd}\033[0m", file=log)
         else:
+            runing_status = False
             print(f"\033[031m[Error {ftime} {htime(time.mktime(end_time)-time.mktime(start_time))}]: {cmd}\033[0m", file=log)
     else:
         if not os.path.exists(f'{jobname}.done'):
@@ -221,10 +225,11 @@ def run_cmd(cmd, jobname=None, capture_output=False):
                 out.close()
                 print(f"\033[032m[Finished {ftime} {htime(time.mktime(end_time)-time.mktime(start_time))}]: {cmd}\033[0m", file=log)
             else:
+                runing_status = False
                 print(f"\033[031m[Error {ftime} {htime(time.mktime(end_time)-time.mktime(start_time))}]: {cmd}\033[0m", file=log)
         else:
             print(f"\033[032m[Skip {ftime}]: {cmd}\033[0m", file=log)
-    return None
+    return runing_status
     
 def rm(file):
     if os.path.isdir(file):
@@ -405,7 +410,10 @@ if ORFSoftware=="TransDecoder":
     if single_best_only == True:
         cmd += ' --single_best_only'
     #subprocess.run(cmd, shell=True, capture_output=True)
-    run_cmd(cmd, jobname=None, capture_output=debug_info)
+    res = run_cmd(cmd, jobname=None, capture_output=debug_info)
+
+    if res==False:
+        run_cmd(cmd+" --no_refine_starts", jobname=None, capture_output=debug_info)
     
     cmd = f"{os.path.join(TransDecoder_PATH, 'util/cdna_alignment_orf_to_genome_orf.pl')} {prefix}.transcript.fasta.transdecoder.gff3 {prefix}.transcript.gff3 {prefix}.transcript.fasta > {prefix}.transcript.genome.gff3"
     #subprocess.run(cmd, shell=True, capture_output=True)
@@ -464,16 +472,20 @@ elif ORFSoftware=="TD2":
     cmd = f"TD2.LongOrfs --precise -t {prefix}.transcript.fasta -G {genetic_code} -O {output_dir} -@ {thread}"
     #subprocess.run(cmd, shell=True, capture_output=True)
     run_cmd(cmd, jobname=None, capture_output=debug_info)
-    
-    cmd = f"TD2.Predict --precise -t {prefix}.transcript.fasta -G {genetic_code} -O {output_dir}"
+
+    infile = os.path.basename(f"{prefix}.transcript.fasta")
+    cmd = f"TD2.Predict --precise -t {infile} -G {genetic_code} -O ./"
     if single_best_only == True:
         pass
     else:
         #pass
         cmd += ' --all-good'
+    
+    os.chdir(output_dir)
     #subprocess.run(cmd, shell=True, capture_output=True)
     run_cmd(cmd, jobname=None, capture_output=debug_info)
-    
+    os.chdir('../')
+
     cmd = f"{os.path.join(TransDecoder_PATH, 'util/cdna_alignment_orf_to_genome_orf.pl')} {prefix}.transcript.fasta.TD2.gff3 {prefix}.transcript.gff3 {prefix}.transcript.fasta > {prefix}.transcript.genome.gff3"
     #subprocess.run(cmd, shell=True, capture_output=True)
     run_cmd(cmd, jobname=None, capture_output=debug_info)
@@ -490,7 +502,7 @@ elif ORFSoftware=="TD2":
     
     cmd = f"{os.path.join(sys.path[0], 'script/add_type_gff3.py')} {prefix}.tmp.gff3 {prefix}.pep.fasta -o {prefix}.gff3"
     run_cmd(cmd, jobname=None, capture_output=False)
-    rm({prefix}.tmp.gff3)
+    rm(f"{prefix}.tmp.gff3")
     
     #cmd = f"{os.path.join(TransDecoder_PATH, 'util/gff3_file_to_proteins.pl')} \
     #--gff3 {prefix}.gff3 --fasta {genome_file} --genetic_code {NCBI2TransDecoder_genetic_code[genetic_code]} --seqType CDS > {prefix}.cds.fasta"

@@ -13,6 +13,7 @@ if __name__ == '__main__':
     optional = parser.add_argument_group('optional arguments')
     required.add_argument('gff3', metavar='gff3', help='A input file of gff3 format.')
     optional.add_argument('-o', '--output', metavar='str', help='A output file of gff3 format.')
+    optional.add_argument('-t', '--type', metavar='str', help='Calculate intron based on CDS or exon.', default='exon')
     optional.add_argument('-r', '--retain_original_features', action='store_true', help='Retain original features.')
     optional.add_argument('-h','--help', action='help', help='Show this help message and exit.')
     optional.add_argument('-v','--version', action='version', version='v1.00', help="Show program's version number and exit.")
@@ -20,6 +21,7 @@ if __name__ == '__main__':
     inputfile = args.gff3
     outputfile = args.output
     retain_original_features = args.retain_original_features
+    Type = args.type
 
 #inputfile = "/home/chenguisen/test/Cromileptes_altivelis.longest.gff3.gz"
 
@@ -70,7 +72,7 @@ for l in f:
             else:
                 features.setdefault(mRNAID, [l[0:8] + [l[8].strip()]])
                 
-            if l[2] == 'exon':
+            if l[2] == Type:
                 pos = (int(l[3]), int(l[4]), l[6])
                 if mRNAID in mRNA2exons:
                     mRNA2exons[mRNAID].append(pos)
