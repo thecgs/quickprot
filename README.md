@@ -29,7 +29,6 @@ The QuickProt algorithm is a homology-based method for predicting gene models ac
 
 <center>Fig1. Schema of QuickProt algorithm</center>
 
-
 ## Installation:
 
 Before use, you need to install Perl, Python, and biopython.
@@ -99,6 +98,14 @@ This step can help you remove repeat proteins (e.g. ENV, Gag, Pol, RT, RH, INT, 
 ## results
 ## retain.gff3 —— Gene model without repeat proteins
 ## discard.gff3 —— Gene model of repeat proteins
+```
+
+## Run with Singularity
+
+Download the Singularity image [here](https://zenodo.org/records/17718142/files/quickprot.v1.8.sif?download=1)
+
+```
+singularity exec -B PATH -e quickprot.v1.8.sif quickprot.py -q protein.fasta -g genome.fasta
 ```
 
 ## Cite QuickProt:

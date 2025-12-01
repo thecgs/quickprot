@@ -23,8 +23,6 @@ if __name__ == '__main__':
     retain_original_features = args.retain_original_features
     Type = args.type
 
-#inputfile = "/home/chenguisen/test/Cromileptes_altivelis.longest.gff3.gz"
-
 def get_introns(mRNA2exons):
     mRNA2introns = {}
     for mRNAID in mRNA2exons:

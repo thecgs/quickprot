@@ -535,6 +535,7 @@ elif ORFSoftware=="TD2":
                           os.path.realpath(os.path.join(os.path.dirname(prefix),'longest_orfs.gff3')),
                           os.path.realpath(os.path.join(os.path.dirname(prefix),'psauron_score.csv')),
                           *tuple(glob.glob(os.path.realpath(f'{prefix}.transcript.fasta')+'*'))]
+                          
     #print(intermediate_files)
     
     if noclean:
