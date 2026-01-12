@@ -112,5 +112,5 @@ singularity exec -B PATH -e quickprot.v1.8.sif quickprot.py -q protein.fasta -g 
 
 If you use QuickProt, please cite:
 
-> Guisen Chen, Hehe Du, Zhenjie Cao, Ying Wu, Chen Zhang, Yongcan Zhou, Jingqun Ao, Yun Sun, Zihao Yuan. QuickProt: A Fast and Accurate Homology-Based Protein Annotation Tool for Non-Model Organism Genomes to Advance Comparative Genomics.
+> Guisen Chen, Hehe Du, Zhenjie Cao, Ying Wu, Chen Zhang, Yongcan Zhou, Jingqun Ao, Yun Sun, Zihao Yuan. 2026. “ QuickProt: A Fast and Accurate Homology-Based Protein Annotation Tool for Non-Model Organisms to Advance Comparative Genomics.” Molecular Ecology Resources 26, no. 2: e70097. https://doi.org/10.1111/1755-0998.70097.
 
