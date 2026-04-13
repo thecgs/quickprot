@@ -50,7 +50,7 @@ def parser_gff3(gff3):
                 mRNAs[mRNAID] = (l[0], min(int(l[3]), int(l[4])), max(int(l[3]), int(l[4])), l[6])
             elif l[2] in ["CDS", "stop_codon"]:
                 mRNAID = re.search('Parent=(.*?)[;,\n]', l[8]).group(1)
-                CDSs[mRNAID].append((l[0], min(int(l[3]), int(l[4])), max(int(l[3]), int(l[4])), l[6]))
+                CDSs[mRNAID].append((l[0], min(int(l[3]), int(l[4])), max(int(l[3]), int(l[4])), l[6], int(l[7])))                    
             elif l[2] == "exon":
                 mRNAID = re.search('Parent=(.*?)[;,\n]', l[8]).group(1)
                 exons[mRNAID].append((l[0], min(int(l[3]), int(l[4])), max(int(l[3]), int(l[4])), l[6]))
@@ -58,22 +58,38 @@ def parser_gff3(gff3):
     #return genes, mRNAs, gene2mRNA, CDSs, exons
     return mRNAs, mRNA2gene, CDSs, exons
 
-def extract_sequence(pos, genome_dict, cut=False):
+def extract_sequence(pos, genome_dict):
     sequence = ""
     for p in sorted(pos, key=lambda x: x[1]):
-        #print(p)
         sequence += genome_dict[p[0]][p[1]-1:p[2]]
+        
+    if pos[0][3] == "+":
+        #if pos[0][4] !=0:
+            #print("True", pos)   
+        if pos[0][4] == 2:
+            sequence = sequence[2:]
+        if pos[0][4] == 1:
+            sequence = sequence[1:]
+            
+    if pos[0][3] == "-":
+        #if pos[0][4] !=0:
+        #    print("True", pos)
+        if pos[0][4] == 2:
+            sequence = sequence[:-2]
+        if pos[0][4] == 1:
+            sequence = sequence[:-1]
+            
     if p[3] == "-":
         sequence = sequence.reverse_complement()
     
-    if cut:
-        if len(sequence) % 3 == 1:
-            sequence = sequence[:-1]
-        elif len(sequence) % 3 == 2:
-            sequence = sequence[:-2]
+    #if cut:
+    #    if len(sequence) % 3 == 1:
+    #        sequence = sequence[:-1]
+    #    elif len(sequence) % 3 == 2:
+    #        sequence = sequence[:-2]
     return sequence
 
-def main(genome, gff3, output=None, seqtype=['prot', 'CDS'][0], genetic_code=1, remove_stop_codon=False, stop_codon="*"):
+def main(genome, gff3, output=None, seqtype=['prot', 'CDS'][0], genetic_code=1, remove_stop_codon=False, stop_codon="*", convert_X=True):
     genome_dict = parser_genome(genome)
     mRNAs, mRNA2gene, CDSs, exons = parser_gff3(gff3)
     if output == None:
@@ -94,12 +110,23 @@ def main(genome, gff3, output=None, seqtype=['prot', 'CDS'][0], genetic_code=1, 
     if seqtype == 'prot':
         for m in mRNAs:
             #print(m)
-            sequence = extract_sequence(CDSs[m], genome_dict, cut=True).translate(table=genetic_code, stop_symbol=stop_codon, to_stop=remove_stop_codon)
-            #print(sequence)
+            sequence = extract_sequence(CDSs[m], genome_dict).translate(table=genetic_code, stop_symbol=stop_codon)
+            # inframe stop codon -> X
+            if convert_X:
+                sequence = sequence[:-1].replace(stop_codon, "X")
+            
+            # remove stop codon
+            if remove_stop_codon:
+                if sequence[-1] == stop_codon:
+                    sequence = sequence[:-1]
+            
+            # count protein len
             if sequence[-1] == stop_codon:
                 prot_len = len(sequence) - 1
             else:
                 prot_len = len(sequence)
+                
+            
             pos_str = f"{mRNAs[m][0]}:{mRNAs[m][1]}-{mRNAs[m][2]}({mRNAs[m][3]})"
             if m in mRNA2gene:
                 print(f'>{m} Gene={mRNA2gene[m]} Length={prot_len} Position={pos_str}', file=out)
@@ -156,14 +183,16 @@ Reference website: https://www.ncbi.nlm.nih.gov/Taxonomy/taxonomyhome.html/index
                           help="Genetic code. default=1")
     optional.add_argument('-t', '--seqtype', metavar='str', default='prot', choices=['prot', 'CDS'], 
                           help="Sequence type [prot|CDS]. default=prot")
-    optional.add_argument('--remove_stop_codon', action='store_true', 
+    optional.add_argument('-rc', '--remove_stop_codon', action='store_true', 
                           help="Remove stop codon. default=False")
-    optional.add_argument('--stop_codon', metavar='str', default='*', 
+    optional.add_argument('-sc','--stop_codon', metavar='str', default='*', 
                           help="Stop codon symbol. default=*")
+    optional.add_argument('-cx', '--convert_X', action='store_true',
+                          help='The stop codon in the middle of the CDS sequence is translated into X.')                      
     optional.add_argument('-h', '--help', action='help', 
                           help="Show program's help message and exit.")
     optional.add_argument('-v', '--version', action='version', version='v1.11', 
                           help="Show program's version number and exit.")
     args = parser.parse_args()
     main(genome=args.genome, gff3=args.gff3, output=args.output, seqtype=args.seqtype, genetic_code=args.genetic_code,
-         remove_stop_codon=args.remove_stop_codon, stop_codon=args.stop_codon)
+         remove_stop_codon=args.remove_stop_codon, stop_codon=args.stop_codon, convert_X=args.convert_X)

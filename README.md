@@ -4,16 +4,16 @@
 
 ## Update
 
+- 2026/04/13
+  1. extract_sequence_from_gff3.py now supports GFF3 file from NCBI. Some gene models in NCBI GFF3 contain in-frame stop codons; when translated into proteins, these are now converted to X (using the -cx option).
 - 2025/09/16
   1. Added add_type_gff3.py script.
   2. Optimized prediction of stop codon.
   3. Four new options have been added, namely "-c", "-ps", "-ms", and "-an", for quality control of protein mapping, rational use to reduce pseudogenes.
-
 - 2025/09/08
   1.  Added gtf_genome_to_cdna_fasta.py and gtf_genome_to_cdna_fasta.py script.
   2. Input files now support .gz compressed files.
   3. Now QuickProt can output more running details.
-
 - 2025/09/06
   1. Provides information about the running process.
   2. Added filter_repeatPeps_from_gff3.py script for removing repeat proteins from gff3 file.
