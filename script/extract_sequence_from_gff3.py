@@ -113,7 +113,10 @@ def main(genome, gff3, output=None, seqtype=['prot', 'CDS'][0], genetic_code=1, 
             sequence = extract_sequence(CDSs[m], genome_dict).translate(table=genetic_code, stop_symbol=stop_codon)
             # inframe stop codon -> X
             if convert_X:
-                sequence = sequence[:-1].replace(stop_codon, "X")
+                if sequence[-1] == stop_codon:
+                    sequence = sequence[:-1].replace(stop_codon, "X") + sequence[-1]
+                else:
+                    sequence = sequence.replace(stop_codon, "X")
             
             # remove stop codon
             if remove_stop_codon:
