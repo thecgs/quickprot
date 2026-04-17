@@ -59,24 +59,29 @@ def parser_gff3(gff3):
     return mRNAs, mRNA2gene, CDSs, exons
 
 def extract_sequence(pos, genome_dict):
+    pos_new = sorted(pos, key=lambda x: x[1])
+
     sequence = ""
-    for p in sorted(pos, key=lambda x: x[1]):
+    for p in pos_new:
         sequence += genome_dict[p[0]][p[1]-1:p[2]]
-        
-    if pos[0][3] == "+":
-        #if pos[0][4] !=0:
-            #print("True", pos)   
-        if pos[0][4] == 2:
+
+    if pos_new[0][3] == "+":
+        #if pos_new[0][4] !=0:
+            #print("True", pos_new)   
+        if pos_new[0][4] == 2:
             sequence = sequence[2:]
-        if pos[0][4] == 1:
+        if pos_new[0][4] == 1:
             sequence = sequence[1:]
             
-    if pos[0][3] == "-":
-        #if pos[0][4] !=0:
-        #    print("True", pos)
-        if pos[0][4] == 2:
+    if pos_new[0][3] == "-":
+        #if pos_new[0][4] !=0:
+        #    print("True", pos_new)
+        #if pos_new[-1][4] !=0:
+        #    print("True", pos_new)
+
+        if pos_new[-1][4] == 2:
             sequence = sequence[:-2]
-        if pos[0][4] == 1:
+        if pos_new[-1][4] == 1:
             sequence = sequence[:-1]
             
     if p[3] == "-":
