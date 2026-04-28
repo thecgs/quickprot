@@ -2,6 +2,7 @@
 # coding: utf-8
 
 import re
+import sys
 import gzip
 import argparse
 from Bio import SeqIO
@@ -25,16 +26,16 @@ mRNA2Type = {}
 statType = {"complete":0, "3prime_partial":0, "5prime_partial":0, "internal":0}
 for record in SeqIO.parse(pep, 'fasta'):
     if record.seq[0].upper() == "M" and record.seq[-1].upper() == "*":
-        mRNA2Type.setdefault(record.id, 'complete')
+        mRNA2Type.setdefault(record.id, ('complete', len(record.seq)-1))
         statType['complete'] += 1
     if record.seq[0].upper() == "M" and record.seq[-1].upper() != "*":
-        mRNA2Type.setdefault(record.id, '3prime_partial')
+        mRNA2Type.setdefault(record.id, ('3prime_partial', len(record.seq)))
         statType['3prime_partial'] += 1
     if record.seq[0].upper() != "M" and record.seq[-1].upper() == "*":
-        mRNA2Type.setdefault(record.id, '5prime_partial')
+        mRNA2Type.setdefault(record.id, ('5prime_partial', len(record.seq)-1))
         statType['5prime_partial'] += 1
     if record.seq[0].upper() != "M" and record.seq[-1].upper() != "*":
-        mRNA2Type.setdefault(record.id, 'internal')
+        mRNA2Type.setdefault(record.id, ('internal', len(record.seq)))
         statType['internal'] += 1
 
 print("Type\tGene Number")
@@ -42,17 +43,24 @@ for i in statType:
     print(i,statType[i], sep='\t')
     
 out = open(outfile, 'w')
-with open(gff3, 'r') as f:
-    for l in f:
-        if l.strip() != "" and not l.startswith('#'):
-            if l.strip().split('\t')[2] == 'mRNA':
-                ID = re.search("ID=(.*?);",l.strip().split('\t')[8]).group(1)
-                if l.strip()[-1] == ";":
-                    print(l.strip() + f"Type={mRNA2Type[ID]};", file=out)
-                else:
-                    print(l.strip() + f";Type={mRNA2Type[ID]};", file=out)
+
+if gff3 == "-":
+    f = sys.stdin
+else:
+    f =  open(gff3, 'r')
+
+for l in f:
+    if l.strip() != "" and not l.startswith('#'):
+        if l.strip().split('\t')[2] == 'mRNA':
+            ID = re.search("ID=(.*?);",l.strip().split('\t')[8]).group(1)
+            
+            if l.strip()[-1] == ";":
+                print(re.sub("Type=.*?;|Prot_Len=.*?;", "", l.strip()) + f"Type={mRNA2Type[ID][0]};Prot_Len={mRNA2Type[ID][1]};", file=out)
             else:
-                print(l.strip(), file=out)
+                print(re.sub("Type=.*?;|Prot_Len=.*?;", "", l.strip()) + f";Type={mRNA2Type[ID][0]};Prot_Len={mRNA2Type[ID][1]};", file=out)
         else:
             print(l.strip(), file=out)
+    else:
+        print(l.strip(), file=out)
 out.close()
+f.close()

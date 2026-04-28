@@ -59,6 +59,7 @@ def parser_gff3(gff3):
     return mRNAs, mRNA2gene, CDSs, exons
 
 def extract_sequence(pos, genome_dict):
+    #print(pos)
     pos_new = sorted(pos, key=lambda x: x[1])
 
     sequence = ""

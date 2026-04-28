@@ -76,7 +76,7 @@ def get_best_gene_model(genome, gff_file, genetic_code, identity=0.6):
     for record in SeqIO.parse(result.stdout, 'fasta'):
         if record.seq[-1] == "*":
             record.seq = record.seq[:-1]
-        if not bool(re.search('\*', str(record.seq))):
+        if not bool(re.search(r'\*', str(record.seq))):
             MPID.append(record.id)
             
     mRNA2feature = defaultdict(list)

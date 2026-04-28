@@ -4,6 +4,12 @@
 
 ## Update
 
+- 2026/04/28
+  1. Major Update: The version number has been updated to 1.9.0
+  2. **BUSCO results have improved significantly！！！**
+  3. The runtime logic and results have been optimized, resulting in more comprehensive gene predictions.
+  4.  Partially overlapping genes (<0.2 overlap) are now permitted.
+  5. Compatibility with newer versions of Python has been improved.
 - 2026/04/13
   1. extract_sequence_from_gff3.py now supports GFF3 file from NCBI. Some gene models in NCBI GFF3 contain in-frame stop codons; when translated into proteins, these are now converted to X (using the -cx option).
 - 2025/09/16

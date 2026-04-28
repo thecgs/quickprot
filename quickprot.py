@@ -47,7 +47,7 @@ Translate Tables/Genetic Codes:
 32: Balanophoraceae Plastid                          ## TransDecoder not supported
 33: Cephalodiscidae Mitochondrial                    ## TransDecoder not supported
 Reference website: https://www.ncbi.nlm.nih.gov/Taxonomy/taxonomyhome.html/index.cgi?chapter=tgencodes
-""", add_help=False, epilog='Date:2025/09/18 Author:Guisen Chen Email:thecgs001@foxmail.com', formatter_class=RawTextHelpFormatter)
+""", add_help=False, epilog='Date:2026/04/28 Author:Guisen Chen Email:thecgs001@foxmail.com', formatter_class=RawTextHelpFormatter)
     required = parser.add_argument_group('required arguments')
     optional = parser.add_argument_group('optional arguments')
     required.add_argument('-q', '--query', metavar='str', help='A file of query protein fasta format, supports .gz compressed files.', required=True)
@@ -67,6 +67,7 @@ Reference website: https://www.ncbi.nlm.nih.gov/Taxonomy/taxonomyhome.html/index
 they will be dissected.""")
     optional.add_argument('-t', '--thread', metavar='int', type=int, default=os.cpu_count(), help=f'Thread number of run miniprot sortware. defualt={os.cpu_count()}')
     optional.add_argument('-G', '--genetic_code', metavar='int', type=int, default=1, help="Genetic code. default=1")
+    optional.add_argument('-j', '--splice_model', metavar='int', type=int, default=1, help="Splice model for the target genome: 2=vertebrate/insect, 1=general, 0=none. The vertebrate/insect model considers ‘G|GTR...YYYNYAG|’ as the optimal splicing sequence and penalizes other sequences based on profiles in Sibley et al (2016). According to Irimia and Roy (2008) and Sheth et al (2006), the first ‘G’ in the donor exon and the poly-Y close to the acceptor may not be conserved in some species. The general model takes ‘|GTR...YAG|’ as the optimal sequence. Both models also slightly prefer less frequent splice sites including ‘G|GC...YAG|’ and ‘|AT...AC|’.. default=1")
     optional.add_argument('-s', '--skip_align', action='store_true', help="Skip run miniprot step. default=False")
     optional.add_argument('-m', '--mask', action='store_true', help="Soft-masked (dna_sm) genome convert to masked(dna_rm) genome. default=False")
     optional.add_argument('-n', '--noclean', action='store_true', help="Do not delete intermediate files. default=False")
@@ -80,7 +81,7 @@ the fused ORF will be split in subsequent analysis.""")
                           help="Tool for selecting predicted ORFs, TransDecoder or TD2. default=TransDecoder", default="TransDecoder")
     optional.add_argument('--debug_info', action='store_false', help="Display all software output details. default=False")
     optional.add_argument('-h', '--help', action='help', help="Show program's help message and exit.")
-    optional.add_argument('-v', '--version', action='version', version='v1.8.0', help="Show program's version number and exit.")
+    optional.add_argument('-v', '--version', action='version', version='v1.9.0', help="Show program's version number and exit.")
     args = parser.parse_args()
     genetic_code = args.genetic_code
     query_file = os.path.realpath(args.query)
@@ -108,7 +109,7 @@ the fused ORF will be split in subsequent analysis.""")
     miniprot_PATH = args.miniprot_PATH
     ORFSoftware = args.ORFSoftware
     debug_info = args.debug_info
-    
+    splice_model = args.splice_model
     main_cmd = ' '.join(sys.argv)
     print(f'\n\033[035mCMD: {main_cmd}\033[0m\n')
     
@@ -248,7 +249,7 @@ def mkdir(path):
         pass
     return None
     
-def run_miniprot(query_file, genome_file, output, thread, mask, skip_align, outs):
+def run_miniprot(query_file, genome_file, output, thread, mask, skip_align, outs, genetic_code, splice_model):
     if mask:
         cmd = f"{os.path.join(sys.path[0], 'script', 'sm2rmForFasta.py')} -i {genome_file} -o {genome_file}.tmp"
         #subprocess.run(cmd, shell=True)
@@ -257,7 +258,7 @@ def run_miniprot(query_file, genome_file, output, thread, mask, skip_align, outs
     
     #miniprot  = os.path.join(sys.path[0], 'bin', 'miniprot')
     miniprot = miniprot_PATH
-    cmd = f'{miniprot} -I --outs={outs} -t {thread} --aln --gff {genome_file} {query_file} > {output}'
+    cmd = f'{miniprot} -j {splice_model} -T {genetic_code} -I --outs={outs} -t {thread} --aln --gff {genome_file} {query_file} > {output}'
     if skip_align:
         pass
     else:
@@ -271,24 +272,111 @@ def run_miniprot(query_file, genome_file, output, thread, mask, skip_align, outs
             pass
     return None
 
+def calculate_overlap_value(Range1, Range2):
+    """
+    Return overlap_value, overlap_value1, overlap_value2
+    
+    overlap_value = overlap_length / max_range_length
+    overlap_value1 = overlap_length / range1_length
+    overlap_value2 = overlap_length / range2_length
+    
+    example:
+    overlap_value, overlap_value1, overlap_value2 = calculate_overlap_value(Range1=(1, 100), Range2=(50, 99))
+    overlap_value, overlap_value1, overlap_value2 = calculate_overlap_value(Range1=(1, 100), Range2=(50, 100))
+    """
+    Range1 = (Range1[1], Range1[2])
+    Range2 = (Range2[1], Range2[2])
+    # print(Range1, Range2)
+    if Range1[0] > Range2[0]:
+        Range1, Range2 = Range2, Range1
+        
+    #case0
+    #start1---------------end1
+    #                           start2----------end2
+    if Range2[0] >= Range1[1]:
+        overlap_value = 0
+        overlap_value1 = 0
+        overlap_value2 = 0
+    else:
+        #case1
+        #start1---------------end1
+        #         start2----------end2
+        
+        #case2
+        #start1---------------end1
+        #    start2-----------end2
+        
+        #case3
+        #start1---------------end1
+        #start2---------------------end2
+        
+        #case4
+        #start1---------------end1
+        #start2---------------end2
+        
+        if Range1[1] <= Range2[1]:
+            overlap_length = Range1[1] - Range2[0] + 1
+        #case5
+        #start1---------------end1
+          #start2------end2
+        else:
+            overlap_length = Range2[1] - Range2[0] + 1
+    
+        overlap_value = overlap_length / (max(Range1[1], Range2[1]) - min(Range1[0], Range2[0]) + 1)
+        overlap_value1 = overlap_length / (Range1[1] - Range1[0] + 1)
+        overlap_value2 = overlap_length / (Range2[1] - Range2[0] + 1)
+        
+    return overlap_value, overlap_value1, overlap_value2
+
+#def merge_region(regions, align_number=0):
+#    sorted_regions = sorted(list(regions), key=lambda x: (x[3], x[0], x[1]), reverse=False)
+#    merge_region = []
+#    for region in sorted_regions:
+#        #if (len(merge_region) == 0) or (region[0] != merge_region[-1][0]) or (region[3] != merge_region[-1][3]) or (region[1] > merge_region[-1][2]):
+#        #if (len(merge_region) == 0) or (region[0] != merge_region[-1][0]) or (region[3] != merge_region[-1][3]) or ((region[1] - merge_region[-1][2]) > 1) or calculate_overlap_value(region, merge_region[-1])[0] <= 0.2:
+#        if (len(merge_region) == 0) or (region[0] != merge_region[-1][0]) or (region[3] != merge_region[-1][3]) or ((region[1] - merge_region[-1][2]) > 1):
+#            merge_region.append(list(region)+[1])
+#        else:
+#            merge_region[-1][2] = max(merge_region[-1][2], region[2])
+#            merge_region[-1][4] += 1
+#            #merge_region[-1][1] = min(merge_region[-1][1], region[1])
+#    if align_number != 0:
+#        merge_region = list(filter(lambda x:x[4] >= align_number, merge_region))
+#    return merge_region
+
 def merge_region(regions, align_number=0):
-    sorted_regions = sorted(list(regions), key=lambda x: (x[3], x[0], x[1]), reverse=False)
+    sorted_regions = sorted(list(regions.keys()), key=lambda x: (x[3], x[0], x[1]), reverse=False)
     merge_region = []
     for region in sorted_regions:
-        #if (len(merge_region) == 0) or (region[0] != merge_region[-1][0]) or (region[3] != merge_region[-1][3]) or (region[1] > merge_region[-1][2]):
-        if (len(merge_region) == 0) or (region[0] != merge_region[-1][0]) or (region[3] != merge_region[-1][3]) or ((region[1] - merge_region[-1][2]) > 1):
+        if (len(merge_region) == 0) or (region[0] != merge_region[-1][0]) or (region[3] != merge_region[-1][3]) or ((region[1] - merge_region[-1][2]) > 1) or max(calculate_overlap_value(region, merge_region[-1])) <= 0.2:
+            if (len(merge_region) != 0) and 0<max(calculate_overlap_value(region, merge_region[-1])) <= 0.2:
+                print(merge_region[-1], region, calculate_overlap_value(region, merge_region[-1]))
             merge_region.append(list(region)+[1])
         else:
-            merge_region[-1][2] = max(merge_region[-1][2], region[2])
-            merge_region[-1][4] += 1
-            #merge_region[-1][1] = min(merge_region[-1][1], region[1])
+            if region[5] > merge_region[-1][5]:
+                 merge_region[-1][1] = region[1]
+                 merge_region[-1][2] = region[2]
+                 merge_region[-1][4] = region[4]
+                 merge_region[-1][5] = region[5]
+            elif region[5] == merge_region[-1][5]:
+                if region[4] > merge_region[-1][4]:
+                      merge_region[-1][1] = region[1]
+                      merge_region[-1][2] = region[2]
+                      merge_region[-1][4] = region[4]
+                      merge_region[-1][5] = region[5]
+                      
+            merge_region[-1][6] += 1
     if align_number != 0:
-        merge_region = list(filter(lambda x:x[4] >= align_number, merge_region))
+        merge_region = list(filter(lambda x:x[5] >= align_number, merge_region))
     return merge_region
+    
 
 def transcript_assembly(miniprot_output, identity, cover, prefix, query_file, preserve_the_starting_AA_number=0, align_number=0, in_stop_number=0):
-    transcript_regions = set()
-    exon_regions = set()
+    #transcript_regions = set()
+    #exon_regions = set()
+    
+    MRNA2exon = defaultdict(list)
+    
     if preserve_the_starting_AA_number==0:
         with open(miniprot_output, 'r') as f:
             for l in f:
@@ -304,15 +392,23 @@ def transcript_assembly(miniprot_output, identity, cover, prefix, query_file, pr
                             InStop = 0
                         if float(re.search('Identity=(.*?);', l[8]).group(1)) >= identity and \
                         query_coverage >= cover and InStop <= in_stop_number:
-                            transcript_region = (l[0], int(l[3]), int(l[4]), l[6])
-                            transcript_regions.add(transcript_region)
+                            #transcript_region = (l[0], int(l[3]), int(l[4]), l[6])
+                            #transcript_regions.add(transcript_region)
+                            pass
                         else:
                             _status = True
                     if _status == False:
-                        if l[2] == 'CDS' or l[2] == 'stop_codon':
-                            #if float(re.search('Identity=(.*?);', l[8]).group(1)) >= identity:
-                            exon_region = (l[0], int(l[3]), int(l[4]), l[6])
-                            exon_regions.add(exon_region)
+                        if l[2] == 'CDS':
+                            if float(re.search('Identity=(.*?);', l[8]).group(1)) >= 0.7:
+                                MRNAID = re.search('Parent=(.*?);', l[8]).group(1)
+                                exon_region = (l[0], int(l[3]), int(l[4]), l[6])
+                                MRNA2exon[MRNAID].append(exon_region)
+                                #exon_regions.add(exon_region)
+                        #elif l[2] == 'stop_codon':
+                        #    MRNAID = re.search('Parent=(.*?);', l[8]).group(1)
+                        #    exon_region = (l[0], int(l[3]), int(l[4]), l[6])
+                        #    MRNA2exon[MRNAID].append(exon_region)
+                               
     else:
         target_AA_dict = {}
         if query_file.endswith('.gz'):
@@ -343,39 +439,84 @@ def transcript_assembly(miniprot_output, identity, cover, prefix, query_file, pr
                         
                         if float(re.search('Identity=(.*?);', l[8]).group(1)) >= identity and \
                         query_coverage >= cover and InStop <= in_stop_number:
-                            transcript_region = (l[0], int(l[3]), int(l[4]), l[6])
-                            transcript_regions.add(transcript_region)
+                            #transcript_region = (l[0], int(l[3]), int(l[4]), l[6])
+                            #transcript_regions.add(transcript_region)
+                            pass
                         else:
                             _status = True
                     if _status == False:
-                        if l[2] == 'CDS' or l[2] == 'stop_codon':
-                            #if float(re.search('Identity=(.*?);', l[8]).group(1)) >= identity:
-                            exon_region = (l[0], int(l[3]), int(l[4]), l[6])
-                            exon_regions.add(exon_region)
+                        if l[2] == 'CDS':
+                            if float(re.search('Identity=(.*?);', l[8]).group(1)) >= 0.7:
+                                exon_region = (l[0], int(l[3]), int(l[4]), l[6])
+                                MRNA2exon[MRNAID].append(exon_region)
+                                #exon_regions.add(exon_region)
+                        #elif l[2] == 'stop_codon':
+                        #    MRNAID = re.search('Parent=(.*?);', l[8]).group(1)
+                        #    exon_region = (l[0], int(l[3]), int(l[4]), l[6])
+                        #    MRNA2exon[MRNAID].append(exon_region)
                             
-    transcript_regions = merge_region(transcript_regions, align_number)
-    exon_regions = merge_region(exon_regions, align_number=0)
-    transcript_regions = sorted(list(transcript_regions), key=lambda x: (x[0], x[1]), reverse=False)
-    exon_regions = sorted(list(exon_regions), key=lambda x: (x[0], x[1]), reverse=False)
     
-    clusters = defaultdict(list)
-    for exon_region in exon_regions:
-        for transcript_region in transcript_regions:
-            if transcript_region[0] == exon_region[0] and transcript_region[3] == exon_region[3] and transcript_region[1] <= exon_region[1] and exon_region[2] <= transcript_region[2]:
-                clusters[tuple(transcript_region)].append(tuple(exon_region))
-                break
+    transcript_regions = defaultdict(list)
+    exon_count = defaultdict(int)
+    
+    for k in MRNA2exon:
+        for v in MRNA2exon[k]:
+            exon_count[v] += 1
+            
+    for k in MRNA2exon:
+        #(Chr, start, end, strand, exon_length, exon_count)
+        transcript_regions[(
+                            MRNA2exon[k][0][0],
+                            min([v[1] for v in MRNA2exon[k]]),
+                            max([v[2] for v in MRNA2exon[k]]),
+                            MRNA2exon[k][0][3],
+                            sum([v[2] -v[1] + 1 for v in MRNA2exon[k]]),
+                            sum([exon_count[v] for v in MRNA2exon[k]])
+                            )
+                          ] = sorted(MRNA2exon[k], key=lambda x:x[1])
+            
+    MRNAIDs = merge_region(transcript_regions, align_number)
+    MRNAIDs = sorted(list(MRNAIDs), key=lambda x: (x[0], x[1]), reverse=False)
+    
+    
+    #exon_regions = (v for k in MRNA2exon for v in MRNA2exon[k])
+    #transcript_regions = merge_region(transcript_regions, align_number)
+    #exon_regions = merge_region(exon_regions, align_number=0)
+    #transcript_regions = sorted(list(transcript_regions), key=lambda x: (x[0], x[1]), reverse=False)
+    #exon_regions = sorted(list(exon_regions), key=lambda x: (x[0], x[1]), reverse=False)
+    
+    #clusters = defaultdict(list)
+    #for exon_region in exon_regions:
+    #    for transcript_region in transcript_regions:
+    #        if transcript_region[0] == exon_region[0] and transcript_region[3] == exon_region[3] and transcript_region[1] <= exon_region[1] and exon_region[2] <= transcript_region[2]:
+    #            clusters[tuple(transcript_region)].append(tuple(exon_region))
+    #            break
                 
-    print('Assemble {} transcripts'.format(len(clusters)))
+    #print('Assemble {} transcripts'.format(len(clusters)))
+    print('Assemble {} transcripts'.format(len(MRNAIDs)))
     
     out = open(f'{prefix}.transcript.gtf', 'w')
-    for index, transcript in enumerate(clusters):
+    for index, transcript in enumerate(MRNAIDs):
         print(transcript[0], 'quickprot', 'transcript', transcript[1], transcript[2], '.', transcript[3], '.',
-              'gene_id "QUKPGENE{}"; transcript_id "QUKPMRNA{}"; protein_alignment_number={};'.format(index+1, index+1, transcript[4]), sep='\t', file=out)
-        for exon in clusters[transcript]:
+              'gene_id "QUKPGENE{}"; transcript_id "QUKPMRNA{}"; protein_alignment_number={}; Len={}; exon_frequency={};'.format(index+1, index+1, transcript[6], transcript[4], transcript[5]), sep='\t', file=out)
+        if tuple(transcript[:-1]) not in transcript_regions:
+            print(transcript)
+        for exon in transcript_regions[tuple(transcript[:-1])]:
             print(exon[0], 'quickprot', 'exon', exon[1], exon[2], '.', exon[3], '.',
                   'gene_id "QUKPGENE{}"; transcript_id "QUKPMRNA{}";'.format(index+1, index+1), sep='\t', file=out)
     out.close()
+    
+    #out = open(f'{prefix}.transcript.gtf', 'w')
+    #for index, transcript in enumerate(clusters):
+    #    print(transcript[0], 'quickprot', 'transcript', transcript[1], transcript[2], '.', transcript[3], '.',
+    #          'gene_id "QUKPGENE{}"; transcript_id "QUKPMRNA{}"; protein_alignment_number={};'.format(index+1, index+1, transcript[4]), sep='\t', file=out)
+    #    for exon in clusters[transcript]:
+    #        print(exon[0], 'quickprot', 'exon', exon[1], exon[2], '.', exon[3], '.',
+    #              'gene_id "QUKPGENE{}"; transcript_id "QUKPMRNA{}";'.format(index+1, index+1), sep='\t', file=out)
+    #out.close()
     return None
+
+
 ## main
 miniprot_PATH, TransDecoder_PATH = check_dependencies(ORFSoftware, miniprot_PATH, TransDecoder_PATH)
 
@@ -385,7 +526,7 @@ if os.path.dirname(prefix) != '':
 miniprot_output = prefix + '.' + os.path.splitext(os.path.basename(query_file))[0] + '.miniprot_output.outs_' + str(outs) + '.gff3'
 
 run_miniprot(query_file=query_file, genome_file=genome_file, output=miniprot_output, 
-             thread=thread, mask=mask, skip_align=skip_align, outs=args.outs)
+             thread=thread, mask=mask, skip_align=skip_align, outs=args.outs, genetic_code=genetic_code, splice_model=splice_model)
 
 transcript_assembly(miniprot_output, identity, cover, prefix, query_file, preserve_the_starting_AA_number, align_number, in_stop_number)
 
@@ -406,7 +547,14 @@ if ORFSoftware=="TransDecoder":
     cmd = f"{os.path.join(TransDecoder_PATH, 'TransDecoder.LongOrfs')} -t {prefix}.transcript.fasta --genetic_code {NCBI2TransDecoder_genetic_code[genetic_code]} --output_dir {output_dir}"
     #subprocess.run(cmd, shell=True, capture_output=True)
     run_cmd(cmd, jobname=None, capture_output=debug_info)
+
     cmd = f"{os.path.join(TransDecoder_PATH, 'TransDecoder.Predict')} -t {prefix}.transcript.fasta --genetic_code {NCBI2TransDecoder_genetic_code[genetic_code]} --output_dir {output_dir}"
+    #exec_blastp=True
+    #if exec_blastp:
+    #    subcmd = f"diamond blastp --query {os.path.join(output_dir, prefix+'.transcript.fasta.transdecoder_dir', 'longest_orfs.pep')} --db {query_file} --outfmt 6 --evalue 1e-5 --threads {thread} --max-target-seqs 1  > blastp.outfmt6.tsv"
+    #    run_cmd(subcmd, jobname=None, capture_output=debug_info)
+    #    cmd += " --retain_blastp_hits blastp.outfmt6.tsv"
+
     if single_best_only == True:
         cmd += ' --single_best_only'
     #subprocess.run(cmd, shell=True, capture_output=True)
@@ -457,7 +605,7 @@ if ORFSoftware=="TransDecoder":
     run_cmd(cmd, jobname=None, capture_output=debug_info)
     
     intermediate_files = [#os.path.realpath(f'{prefix}.miniprot_output.gff3'),
-                          os.path.realpath(f'{prefix}.transcript.gtf'),
+                          #os.path.realpath(f'{prefix}.transcript.gtf'),
                           os.path.realpath(f'{prefix}.transcript.gff3'),
                           os.path.realpath(f'{prefix}.transcript.genome.gff3'),
                           *tuple(glob.glob(os.path.realpath(f'{prefix}.transcript.fasta')+'*'))]
@@ -527,7 +675,7 @@ elif ORFSoftware=="TD2":
     run_cmd(cmd, jobname=None, capture_output=debug_info)
     
     intermediate_files = [#os.path.realpath(f'{prefix}.miniprot_output.gff3'),
-                          os.path.realpath(f'{prefix}.transcript.gtf'),
+                          #os.path.realpath(f'{prefix}.transcript.gtf'),
                           os.path.realpath(f'{prefix}.transcript.gff3'),
                           os.path.realpath(f'{prefix}.transcript.genome.gff3'),
                           os.path.realpath(os.path.join(os.path.dirname(prefix),'longest_orfs.cds')),

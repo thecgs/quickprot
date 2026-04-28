@@ -22,6 +22,62 @@ if __name__ == '__main__':
     overlap = args.overlap
     header = args.header
 
+def calculate_overlap_value(Range1, Range2):
+    """
+    Return overlap_value, overlap_value1, overlap_value2
+    
+    overlap_value = overlap_length / max_range_length
+    overlap_value1 = overlap_length / range1_length
+    overlap_value2 = overlap_length / range2_length
+    
+    example:
+    overlap_value, overlap_value1, overlap_value2 = calculate_overlap_value(Range1=(1, 100), Range2=(50, 99))
+    overlap_value, overlap_value1, overlap_value2 = calculate_overlap_value(Range1=(1, 100), Range2=(50, 100))
+    """
+    Range1 = (Range1[1], Range1[2])
+    Range2 = (Range2[1], Range2[2])
+    # print(Range1, Range2)
+    if Range1[0] > Range2[0]:
+        Range1, Range2 = Range2, Range1
+        
+    #case0
+    #start1---------------end1
+    #                           start2----------end2
+    if Range2[0] >= Range1[1]:
+        overlap_value = 0
+        overlap_value1 = 0
+        overlap_value2 = 0
+    else:
+        #case1
+        #start1---------------end1
+        #         start2----------end2
+        
+        #case2
+        #start1---------------end1
+        #    start2-----------end2
+        
+        #case3
+        #start1---------------end1
+        #start2---------------------end2
+        
+        #case4
+        #start1---------------end1
+        #start2---------------end2
+        
+        if Range1[1] <= Range2[1]:
+            overlap_length = Range1[1] - Range2[0] + 1
+        #case5
+        #start1---------------end1
+          #start2------end2
+        else:
+            overlap_length = Range2[1] - Range2[0] + 1
+    
+        overlap_value = overlap_length / (max(Range1[1], Range2[1]) - min(Range1[0], Range2[0]) + 1)
+        overlap_value1 = overlap_length / (Range1[1] - Range1[0] + 1)
+        overlap_value2 = overlap_length / (Range2[1] - Range2[0] + 1)
+        
+    return overlap_value, overlap_value1, overlap_value2
+
 def get_filter_regions(regions, overlap=0.8):
     filter_regions = []
     regions = sorted(regions, key=lambda x: (x[0],x[1]))
@@ -31,7 +87,10 @@ def get_filter_regions(regions, overlap=0.8):
             filter_regions.append(region)
         else:
             if region[3] == filter_regions[-1][3]:
-                value = (region[1] - filter_regions[-1][1] +1)/(max(region[2], filter_regions[-1][2]) - min(region[1], filter_regions[-1][1]) +1)
+                
+                value = max(calculate_overlap_value(Range1=region, Range2=filter_regions[-1]))
+                #value = (region[1] - filter_regions[-1][1] +1)/(max(region[2], filter_regions[-1][2]) - min(region[1], filter_regions[-1][1]) +1)
+
                 if overlap <= value:
                     filter_regions[-1][2] = max(region[2], filter_regions[-1][2])
                 else:
@@ -61,7 +120,7 @@ with open(infile, 'r') as f:
             if l[2] == 'mRNA':
                 ID = re.search('ID=(.*?);',l[8]).group(1)
                 try:
-                    TYPE = re.search('Name="ORF type:(.*?) \(',l[8]).group(1)
+                    TYPE = re.search(r'Name="ORF type:(.*?) \(',l[8]).group(1)
                 except AttributeError:
                     TYPE = re.search('type:(.*?) len',l[8]).group(1)
                 try:
