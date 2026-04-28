@@ -56,7 +56,7 @@ Reference website: https://www.ncbi.nlm.nih.gov/Taxonomy/taxonomyhome.html/index
     optional.add_argument('-i', '--identity', metavar='float', type=float, default=0.8, help='Alignment identity (0-1). default=0.8')
     optional.add_argument('-c', '--cover', metavar='float', default=0.6, type=float,
                           help='minimum query cover (0-1) to report an alignment. defualt=0.6')
-    optional.add_argument('-ot', '--outs', metavar='float', type=float, default=0.95, help='Output score at least bestScore (0-1). default=0.95')
+    optional.add_argument('-ot', '--outs', metavar='float', type=float, default=0.95, help='miniprot optional: Output score at least bestScore (0-1). default=0.95')
     optional.add_argument('-ps', '--preserve_the_starting_AA_number', metavar='int', type=int, default=0, 
                           help='The query sequence is consistent with the first [INT] amino acids of the target sequence, which can effectively inhibit pseudogenes. default=0')
     optional.add_argument('-ms', '--max_in_stop_number', metavar='int', type=str, default="inf", 
@@ -67,7 +67,7 @@ Reference website: https://www.ncbi.nlm.nih.gov/Taxonomy/taxonomyhome.html/index
 they will be dissected.""")
     optional.add_argument('-t', '--thread', metavar='int', type=int, default=os.cpu_count(), help=f'Thread number of run miniprot sortware. defualt={os.cpu_count()}')
     optional.add_argument('-G', '--genetic_code', metavar='int', type=int, default=1, help="Genetic code. default=1")
-    optional.add_argument('-j', '--splice_model', metavar='int', type=int, default=1, help="Splice model for the target genome: 2=vertebrate/insect, 1=general, 0=none. The vertebrate/insect model considers ‘G|GTR...YYYNYAG|’ as the optimal splicing sequence and penalizes other sequences based on profiles in Sibley et al (2016). According to Irimia and Roy (2008) and Sheth et al (2006), the first ‘G’ in the donor exon and the poly-Y close to the acceptor may not be conserved in some species. The general model takes ‘|GTR...YAG|’ as the optimal sequence. Both models also slightly prefer less frequent splice sites including ‘G|GC...YAG|’ and ‘|AT...AC|’.. default=1")
+    optional.add_argument('-j', '--splice_model', metavar='int', type=int, default=1, help="miniprot optional: Splice model for the target genome: 2=vertebrate/insect, 1=general, 0=none. The vertebrate/insect model considers ‘G|GTR...YYYNYAG|’ as the optimal splicing sequence and penalizes other sequences based on profiles in Sibley et al (2016). According to Irimia and Roy (2008) and Sheth et al (2006), the first ‘G’ in the donor exon and the poly-Y close to the acceptor may not be conserved in some species. The general model takes ‘|GTR...YAG|’ as the optimal sequence. Both models also slightly prefer less frequent splice sites including ‘G|GC...YAG|’ and ‘|AT...AC|’.. default=1")
     optional.add_argument('-s', '--skip_align', action='store_true', help="Skip run miniprot step. default=False")
     optional.add_argument('-m', '--mask', action='store_true', help="Soft-masked (dna_sm) genome convert to masked(dna_rm) genome. default=False")
     optional.add_argument('-n', '--noclean', action='store_true', help="Do not delete intermediate files. default=False")
@@ -349,8 +349,8 @@ def merge_region(regions, align_number=0):
     merge_region = []
     for region in sorted_regions:
         if (len(merge_region) == 0) or (region[0] != merge_region[-1][0]) or (region[3] != merge_region[-1][3]) or ((region[1] - merge_region[-1][2]) > 1) or max(calculate_overlap_value(region, merge_region[-1])) <= 0.2:
-            if (len(merge_region) != 0) and 0<max(calculate_overlap_value(region, merge_region[-1])) <= 0.2:
-                print(merge_region[-1], region, calculate_overlap_value(region, merge_region[-1]))
+            #if (len(merge_region) != 0) and 0<max(calculate_overlap_value(region, merge_region[-1])) <= 0.2:
+            #    print(merge_region[-1], region, calculate_overlap_value(region, merge_region[-1]))
             merge_region.append(list(region)+[1])
         else:
             if region[5] > merge_region[-1][5]:
