@@ -48,7 +48,7 @@ def parser_gff3(gff3):
                 except:
                     pass
                 mRNAs[mRNAID] = (l[0], min(int(l[3]), int(l[4])), max(int(l[3]), int(l[4])), l[6])
-            elif l[2] in ["CDS", "stop_codon"]:
+            elif l[2] in ["CDS"]: # stop_codon
                 mRNAID = re.search('Parent=(.*?)[;,\n]', l[8]).group(1)
                 CDSs[mRNAID].append((l[0], min(int(l[3]), int(l[4])), max(int(l[3]), int(l[4])), l[6], int(l[7])))                    
             elif l[2] == "exon":

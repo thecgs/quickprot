@@ -328,87 +328,85 @@ def calculate_overlap_value(Range1, Range2):
         
     return overlap_value, overlap_value1, overlap_value2
 
-#def merge_region(regions, align_number=0):
-#    sorted_regions = sorted(list(regions), key=lambda x: (x[3], x[0], x[1]), reverse=False)
-#    merge_region = []
-#    for region in sorted_regions:
-#        #if (len(merge_region) == 0) or (region[0] != merge_region[-1][0]) or (region[3] != merge_region[-1][3]) or (region[1] > merge_region[-1][2]):
-#        #if (len(merge_region) == 0) or (region[0] != merge_region[-1][0]) or (region[3] != merge_region[-1][3]) or ((region[1] - merge_region[-1][2]) > 1) or calculate_overlap_value(region, merge_region[-1])[0] <= 0.2:
-#        if (len(merge_region) == 0) or (region[0] != merge_region[-1][0]) or (region[3] != merge_region[-1][3]) or ((region[1] - merge_region[-1][2]) > 1):
-#            merge_region.append(list(region)+[1])
-#        else:
-#            merge_region[-1][2] = max(merge_region[-1][2], region[2])
-#            merge_region[-1][4] += 1
-#            #merge_region[-1][1] = min(merge_region[-1][1], region[1])
-#    if align_number != 0:
-#        merge_region = list(filter(lambda x:x[4] >= align_number, merge_region))
-#    return merge_region
-
 def merge_region(regions, align_number=0):
+    
+    def update(merge_region, region):
+        merge_region[-1][1] = region[1]
+        merge_region[-1][2] = region[2]
+        merge_region[-1][4] = region[4]
+        merge_region[-1][5] = region[5]
+        merge_region[-1][6] = region[6]
+        merge_region[-1][7] = region[7]
+        return merge_region, region
+        
     sorted_regions = sorted(list(regions.keys()), key=lambda x: (x[3], x[0], x[1]), reverse=False)
     merge_region = []
     for region in sorted_regions:
         if (len(merge_region) == 0) or (region[0] != merge_region[-1][0]) or (region[3] != merge_region[-1][3]) or ((region[1] - merge_region[-1][2]) > 1) or max(calculate_overlap_value(region, merge_region[-1])) <= 0.2:
-            #if (len(merge_region) != 0) and 0<max(calculate_overlap_value(region, merge_region[-1])) <= 0.2:
-            #    print(merge_region[-1], region, calculate_overlap_value(region, merge_region[-1]))
             merge_region.append(list(region)+[1])
         else:
-            if region[5] > merge_region[-1][5]:
-                 merge_region[-1][1] = region[1]
-                 merge_region[-1][2] = region[2]
-                 merge_region[-1][4] = region[4]
-                 merge_region[-1][5] = region[5]
+            if region[5] > merge_region[-1][5]: # exon_count
+                merge_region, region = update(merge_region, region)
             elif region[5] == merge_region[-1][5]:
-                if region[4] > merge_region[-1][4]:
-                      merge_region[-1][1] = region[1]
-                      merge_region[-1][2] = region[2]
-                      merge_region[-1][4] = region[4]
-                      merge_region[-1][5] = region[5]
-                      
-            merge_region[-1][6] += 1
+                if region[6] > merge_region[-1][6]: # indentity
+                    merge_region, region = update(merge_region, region)
+                elif region[6] == merge_region[-1][6]:
+                    if region[4] > merge_region[-1][4]: # exon_len
+                        merge_region, region = update(merge_region, region)
+                        
+            merge_region[-1][8] += 1
     if align_number != 0:
         merge_region = list(filter(lambda x:x[5] >= align_number, merge_region))
     return merge_region
     
+def get_type(seq):
+    #{"complete":0, '3prime_partial':1, '5prime_partial':2, 'internal':3}
+    start = seq.split()[1][0]
+    end = seq[-4]
+    if start == "M" and end == "*":
+        return 0
+    elif start == "M" and end !="*":
+        return 1
+    elif start != "M" and end == "*":
+        return 2
+    elif start != "M" and end != "*":
+        return 3
+
+def count_in_stop(seq):
+    return len(re.findall(r'\*', seq[:-4]))
 
 def transcript_assembly(miniprot_output, identity, cover, prefix, query_file, preserve_the_starting_AA_number=0, align_number=0, in_stop_number=0):
-    #transcript_regions = set()
-    #exon_regions = set()
-    
+
     MRNA2exon = defaultdict(list)
-    
+    MRNA2identity = defaultdict(float)
+    MRNA2type = defaultdict(str)
+
     if preserve_the_starting_AA_number==0:
         with open(miniprot_output, 'r') as f:
             for l in f:
                 if l.startswith('##PAF'):
                     query_coverage = int(l.strip().split()[10]) / (int(l.strip().split()[2])*3)
+                if l.startswith('##ATA'):
+                    Type = get_type(l)
+                    InStop = count_in_stop(l)
                 if not l.startswith('#') and l.strip() !='':
                     l = l.strip().split('\t')
                     if l[2] == 'mRNA':
                         _status = False
-                        try:
-                            InStop = int(re.search('StopCodon=(.*?);', l[8]).group(1))
-                        except:
-                            InStop = 0
-                        if float(re.search('Identity=(.*?);', l[8]).group(1)) >= identity and \
+                        MRNAID = re.search('ID=(.*?);', l[8]).group(1)
+                        MRNA2identity[MRNAID] = float(re.search('Identity=(.*?);', l[8]).group(1))
+                        MRNA2type[MRNAID] = Type
+                        if MRNA2identity[MRNAID] >= identity and \
                         query_coverage >= cover and InStop <= in_stop_number:
-                            #transcript_region = (l[0], int(l[3]), int(l[4]), l[6])
-                            #transcript_regions.add(transcript_region)
                             pass
                         else:
                             _status = True
                     if _status == False:
                         if l[2] == 'CDS':
-                            if float(re.search('Identity=(.*?);', l[8]).group(1)) >= 0.7:
-                                MRNAID = re.search('Parent=(.*?);', l[8]).group(1)
+                            if MRNA2identity[MRNAID] >= (identity -0.1):
                                 exon_region = (l[0], int(l[3]), int(l[4]), l[6])
                                 MRNA2exon[MRNAID].append(exon_region)
-                                #exon_regions.add(exon_region)
-                        #elif l[2] == 'stop_codon':
-                        #    MRNAID = re.search('Parent=(.*?);', l[8]).group(1)
-                        #    exon_region = (l[0], int(l[3]), int(l[4]), l[6])
-                        #    MRNA2exon[MRNAID].append(exon_region)
-                               
+                                
     else:
         target_AA_dict = {}
         if query_file.endswith('.gz'):
@@ -424,37 +422,29 @@ def transcript_assembly(miniprot_output, identity, cover, prefix, query_file, pr
                     query_coverage = int(l.strip().split()[10]) / (int(l.strip().split()[2])*3)    
                 if l.startswith('##AQA'):
                     query_AA = ''.join(l[5:].strip().split()[:preserve_the_starting_AA_number])
+                if l.startswith('##ATA'):
+                    Type = get_type(l)
+                    InStop = count_in_stop(l)
                 if not l.startswith('#') and l.strip() !='':
                     l = l.strip().split('\t')
                     if l[2] == 'mRNA':
                         _status = False
-                        
-                        try:
-                            InStop = int(re.search('StopCodon=(.*?);', l[8]).group(1))
-                        except:
-                            InStop = 0
-                            
                         if target_AA_dict[re.search('Target=(.*?) ', l[8]).group(1)] != query_AA:
                             _status = True
                         
-                        if float(re.search('Identity=(.*?);', l[8]).group(1)) >= identity and \
+                        MRNAID = re.search('ID=(.*?);', l[8]).group(1)
+                        MRNA2identity[MRNAID] = float(re.search('Identity=(.*?);', l[8]).group(1))
+                        MRNA2type[MRNAID] = Type
+                        if MRNA2identity[MRNAID] >= identity and \
                         query_coverage >= cover and InStop <= in_stop_number:
-                            #transcript_region = (l[0], int(l[3]), int(l[4]), l[6])
-                            #transcript_regions.add(transcript_region)
                             pass
                         else:
                             _status = True
                     if _status == False:
                         if l[2] == 'CDS':
-                            if float(re.search('Identity=(.*?);', l[8]).group(1)) >= 0.7:
+                            if float(re.search('Identity=(.*?);', l[8]).group(1)) >= (identity - 0.2):
                                 exon_region = (l[0], int(l[3]), int(l[4]), l[6])
                                 MRNA2exon[MRNAID].append(exon_region)
-                                #exon_regions.add(exon_region)
-                        #elif l[2] == 'stop_codon':
-                        #    MRNAID = re.search('Parent=(.*?);', l[8]).group(1)
-                        #    exon_region = (l[0], int(l[3]), int(l[4]), l[6])
-                        #    MRNA2exon[MRNAID].append(exon_region)
-                            
     
     transcript_regions = defaultdict(list)
     exon_count = defaultdict(int)
@@ -464,56 +454,36 @@ def transcript_assembly(miniprot_output, identity, cover, prefix, query_file, pr
             exon_count[v] += 1
             
     for k in MRNA2exon:
-        #(Chr, start, end, strand, exon_length, exon_count)
+        #(Chr, start, end, strand, exon_length, exon_count, identity, type)
         transcript_regions[(
                             MRNA2exon[k][0][0],
                             min([v[1] for v in MRNA2exon[k]]),
                             max([v[2] for v in MRNA2exon[k]]),
                             MRNA2exon[k][0][3],
                             sum([v[2] -v[1] + 1 for v in MRNA2exon[k]]),
-                            sum([exon_count[v] for v in MRNA2exon[k]])
+                            sum([exon_count[v] for v in MRNA2exon[k]]),
+                            MRNA2identity[k],
+                            MRNA2type[k]
                             )
                           ] = sorted(MRNA2exon[k], key=lambda x:x[1])
-            
+
     MRNAIDs = merge_region(transcript_regions, align_number)
     MRNAIDs = sorted(list(MRNAIDs), key=lambda x: (x[0], x[1]), reverse=False)
     
-    
-    #exon_regions = (v for k in MRNA2exon for v in MRNA2exon[k])
-    #transcript_regions = merge_region(transcript_regions, align_number)
-    #exon_regions = merge_region(exon_regions, align_number=0)
-    #transcript_regions = sorted(list(transcript_regions), key=lambda x: (x[0], x[1]), reverse=False)
-    #exon_regions = sorted(list(exon_regions), key=lambda x: (x[0], x[1]), reverse=False)
-    
-    #clusters = defaultdict(list)
-    #for exon_region in exon_regions:
-    #    for transcript_region in transcript_regions:
-    #        if transcript_region[0] == exon_region[0] and transcript_region[3] == exon_region[3] and transcript_region[1] <= exon_region[1] and exon_region[2] <= transcript_region[2]:
-    #            clusters[tuple(transcript_region)].append(tuple(exon_region))
-    #            break
-                
-    #print('Assemble {} transcripts'.format(len(clusters)))
     print('Assemble {} transcripts'.format(len(MRNAIDs)))
     
+    ID2Type = {0:"complete", 1:'3prime_partial', 2:'5prime_partial', 3:'internal'}
+
     out = open(f'{prefix}.transcript.gtf', 'w')
     for index, transcript in enumerate(MRNAIDs):
         print(transcript[0], 'quickprot', 'transcript', transcript[1], transcript[2], '.', transcript[3], '.',
-              'gene_id "QUKPGENE{}"; transcript_id "QUKPMRNA{}"; protein_alignment_number={}; Len={}; exon_frequency={};'.format(index+1, index+1, transcript[6], transcript[4], transcript[5]), sep='\t', file=out)
+              'gene_id "QUKPGENE{}"; transcript_id "QUKPMRNA{}"; protein_alignment_number={}; Len={}; exons_frequency={}; identity={}; type={};'.format(index+1, index+1, transcript[8], transcript[4], transcript[5], transcript[6], ID2Type[transcript[7]]), sep='\t', file=out)
         if tuple(transcript[:-1]) not in transcript_regions:
             print(transcript)
         for exon in transcript_regions[tuple(transcript[:-1])]:
             print(exon[0], 'quickprot', 'exon', exon[1], exon[2], '.', exon[3], '.',
                   'gene_id "QUKPGENE{}"; transcript_id "QUKPMRNA{}";'.format(index+1, index+1), sep='\t', file=out)
     out.close()
-    
-    #out = open(f'{prefix}.transcript.gtf', 'w')
-    #for index, transcript in enumerate(clusters):
-    #    print(transcript[0], 'quickprot', 'transcript', transcript[1], transcript[2], '.', transcript[3], '.',
-    #          'gene_id "QUKPGENE{}"; transcript_id "QUKPMRNA{}"; protein_alignment_number={};'.format(index+1, index+1, transcript[4]), sep='\t', file=out)
-    #    for exon in clusters[transcript]:
-    #        print(exon[0], 'quickprot', 'exon', exon[1], exon[2], '.', exon[3], '.',
-    #              'gene_id "QUKPGENE{}"; transcript_id "QUKPMRNA{}";'.format(index+1, index+1), sep='\t', file=out)
-    #out.close()
     return None
 
 

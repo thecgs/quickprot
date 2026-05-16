@@ -64,7 +64,8 @@ for l in f:
                 gene2mRNA[geneID].append(mRNAID)
             else:
                 gene2mRNA.setdefault(geneID, [mRNAID])
-        else:
+        elif l[2] in ['five_prime_UTR', 'exon', 'CDS', 'intron', 'three_prime_UTR', 'start_codon', 'stop_codon']:
+        #else:
             mRNAID = re.search('Parent=(.*?)[;,\n]', l[8]).group(1)
             l[8] = l[8].strip()
             if software!=None:
@@ -83,7 +84,8 @@ else:
     out = open(outputfile, 'w')
     
 for geneID in get_geneID_sorted(genes):
-
+    if (geneID not in genes) or (geneID not in gene2mRNA):
+        continue
     print(*tuple(genes[geneID]), file=out, sep='\t')
     for mRNAID in gene2mRNA[geneID]:
         print(*tuple(mRNAs[mRNAID]), file=out, sep='\t')
