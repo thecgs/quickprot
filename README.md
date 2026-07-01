@@ -108,10 +108,10 @@ This step can help you remove repeat proteins (e.g. ENV, Gag, Pol, RT, RH, INT, 
 
 ## Run with Singularity
 
-Download the Singularity image [here](https://zenodo.org/records/17718142/files/quickprot.v1.8.sif?download=1)
+Download the Singularity image [here](https://zenodo.org/records/21103261/files/quickprot.v1.9.0.sif?download=1)
 
 ```
-singularity exec -B PATH -e quickprot.v1.8.sif quickprot.py -q protein.fasta -g genome.fasta
+singularity exec -B PATH -e quickprot.v1.9.0.sif quickprot.py -q protein.fasta -g genome.fasta
 ```
 
 ## Cite QuickProt:
