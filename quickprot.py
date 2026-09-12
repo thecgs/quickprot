@@ -249,7 +249,7 @@ def mkdir(path):
         pass
     return None
     
-def run_miniprot(query_file, genome_file, output, thread, mask, skip_align, outs, genetic_code, splice_model):
+def run_miniprot(miniprot_PATH, query_file, genome_file, output, thread, mask, skip_align, outs, genetic_code, splice_model):
     if mask:
         cmd = f"{os.path.join(sys.path[0], 'script', 'sm2rmForFasta.py')} -i {genome_file} -o {genome_file}.tmp"
         #subprocess.run(cmd, shell=True)
@@ -495,7 +495,7 @@ if os.path.dirname(prefix) != '':
     
 miniprot_output = prefix + '.' + os.path.splitext(os.path.basename(query_file))[0] + '.miniprot_output.outs_' + str(outs) + '.gff3'
 
-run_miniprot(query_file=query_file, genome_file=genome_file, output=miniprot_output, 
+run_miniprot(miniprot_PATH, query_file=query_file, genome_file=genome_file, output=miniprot_output,
              thread=thread, mask=mask, skip_align=skip_align, outs=args.outs, genetic_code=genetic_code, splice_model=splice_model)
 
 transcript_assembly(miniprot_output, identity, cover, prefix, query_file, preserve_the_starting_AA_number, align_number, in_stop_number)
