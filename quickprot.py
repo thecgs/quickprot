@@ -14,105 +14,7 @@ from Bio import SeqIO
 from collections import defaultdict
 from argparse import RawTextHelpFormatter
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="""
-Quick genome annotation base on protein.
-
-Translate Tables/Genetic Codes:
-1: The Standard
-2: The Vertebrate Mitochondrial
-3: The Yeast Mitochondrial
-4: The Mold, Protozoan, and Coelenterate Mitochondrial Code and the Mycoplasma/Spiroplasma
-5: The Invertebrate Mitochondrial
-6: The Ciliate, Dasycladacean and Hexamita Nuclear
-9: The Echinoderm and Flatworm Mitochondrial
-10: The Euplotid Nuclear
-11: The Bacterial, Archaeal and Plant Plastid        ## TransDecoder not supported
-12: The Alternative Yeast Nuclear
-13: The Ascidian Mitochondrial
-14: The Alternative Flatworm Mitochondrial           ## TransDecoder not supported
-15: Blepharisma Macronuclear
-16: Chlorophycean Mitochondrial
-21: Trematode Mitochondrial                          
-22: Scenedesmus obliquus Mitochondrial                 
-23: Thraustochytrium Mitochondrial                   
-24: Pterobranchia Mitochondrial                      
-25: Candidate Division SR1 and Gracilibacteria       
-26: Pachysolen tannophilus Nuclear                   
-27: Karyorelict Nuclear                              ## TransDecoder not supported
-28: Condylostoma Nuclear                             ## TransDecoder not supported
-29: Mesodinium Nuclear
-30: Peritrich Nuclear
-31: Blastocrithidia Nuclear                          ## TransDecoder not supported
-32: Balanophoraceae Plastid                          ## TransDecoder not supported
-33: Cephalodiscidae Mitochondrial                    ## TransDecoder not supported
-Reference website: https://www.ncbi.nlm.nih.gov/Taxonomy/taxonomyhome.html/index.cgi?chapter=tgencodes
-""", add_help=False, epilog='Date:2026/04/28 Author:Guisen Chen Email:thecgs001@foxmail.com', formatter_class=RawTextHelpFormatter)
-    required = parser.add_argument_group('required arguments')
-    optional = parser.add_argument_group('optional arguments')
-    required.add_argument('-q', '--query', metavar='str', help='A file of query protein fasta format, supports .gz compressed files.', required=True)
-    required.add_argument('-g', '--genome', metavar='str', help='A file of genome fasta format, supports .gz compressed files.', required=True)
-    optional.add_argument('-p', '--prefix', metavar='str', default='quickprot', help='Prefix of a output file. default=quickprot')
-    optional.add_argument('-i', '--identity', metavar='float', type=float, default=0.8, help='Alignment identity (0-1). default=0.8')
-    optional.add_argument('-c', '--cover', metavar='float', default=0.6, type=float,
-                          help='minimum query cover (0-1) to report an alignment. defualt=0.6')
-    optional.add_argument('-ot', '--outs', metavar='float', type=float, default=0.95, help='miniprot optional: Output score at least bestScore (0-1). default=0.95')
-    optional.add_argument('-ps', '--preserve_the_starting_AA_number', metavar='int', type=int, default=0, 
-                          help='The query sequence is consistent with the first [INT] amino acids of the target sequence, which can effectively inhibit pseudogenes. default=0')
-    optional.add_argument('-ms', '--max_in_stop_number', metavar='int', type=str, default="inf", 
-                          help='The maximum number of allowed in-frame stop codons in the amino acids aligned (0-inf) , which can effectively inhibit pseudogenes. default=inf')
-    optional.add_argument('-an', '--align_number', metavar='int', type=int, default=0, 
-                          help='It means that only when there are [INT] protein alignments in a genomic region can the region be defaulted to be a coding region. default=0')
-    optional.add_argument('-op','--overlap', metavar='float', type=float, default=0.8, help="""If the overlap of predicted ORFs in a transcript is less than default value (0-1). default=0.8, 
-they will be dissected.""")
-    optional.add_argument('-t', '--thread', metavar='int', type=int, default=os.cpu_count(), help=f'Thread number of run miniprot sortware. defualt={os.cpu_count()}')
-    optional.add_argument('-G', '--genetic_code', metavar='int', type=int, default=1, help="Genetic code. default=1")
-    optional.add_argument('-j', '--splice_model', metavar='int', type=int, default=1, help="miniprot optional: Splice model for the target genome: 2=vertebrate/insect, 1=general, 0=none. The vertebrate/insect model considers ‘G|GTR...YYYNYAG|’ as the optimal splicing sequence and penalizes other sequences based on profiles in Sibley et al (2016). According to Irimia and Roy (2008) and Sheth et al (2006), the first ‘G’ in the donor exon and the poly-Y close to the acceptor may not be conserved in some species. The general model takes ‘|GTR...YAG|’ as the optimal sequence. Both models also slightly prefer less frequent splice sites including ‘G|GC...YAG|’ and ‘|AT...AC|’.. default=1")
-    optional.add_argument('-s', '--skip_align', action='store_true', help="Skip run miniprot step. default=False")
-    optional.add_argument('-m', '--mask', action='store_true', help="Soft-masked (dna_sm) genome convert to masked(dna_rm) genome. default=False")
-    optional.add_argument('-n', '--noclean', action='store_true', help="Do not delete intermediate files. default=False")
-    optional.add_argument('-b', '--single_best_only', action='store_true', help="""Retain only the single best orf per transcript. default=False
-It is not recommended to use it because when two reference proteins overlap during alignment, 
-it can lead to fusion during transcript assembly. If a transcript is not set with only one ORF,
-the fused ORF will be split in subsequent analysis.""")
-    optional.add_argument('-miniprot_PATH', '--miniprot_PATH', metavar='str', help="miniprot PATH default=auto.", default=None)
-    optional.add_argument('-TransDecoder_PATH', '--TransDecoder_PATH', metavar='str', help="TransDecoder PATH default=auto.", default=None)
-    optional.add_argument('-ORFSoftware', '--ORFSoftware', metavar='str', 
-                          help="Tool for selecting predicted ORFs, TransDecoder or TD2. default=TransDecoder", default="TransDecoder")
-    optional.add_argument('--debug_info', action='store_false', help="Display all software output details. default=False")
-    optional.add_argument('-h', '--help', action='help', help="Show program's help message and exit.")
-    optional.add_argument('-v', '--version', action='version', version='v1.9.0', help="Show program's version number and exit.")
-    args = parser.parse_args()
-    genetic_code = args.genetic_code
-    query_file = os.path.realpath(args.query)
-    genome_file = os.path.realpath(args.genome)
-    thread = args.thread
-    mask = args.mask
-    identity = args.identity
-    cover = args.cover
-    align_number = args.align_number
-    if args.preserve_the_starting_AA_number == "inf":
-        preserve_the_starting_AA_number = math.inf
-    else:
-        preserve_the_starting_AA_number = int(args.preserve_the_starting_AA_number)
-    if args.max_in_stop_number == 'inf':
-        in_stop_number = math.inf
-    else:
-        in_stop_number = int(args.max_in_stop_number)
-    prefix = args.prefix
-    single_best_only = args.single_best_only
-    skip_align = args.skip_align
-    noclean = args.noclean
-    outs = args.outs
-    overlap = args.overlap
-    TransDecoder_PATH = args.TransDecoder_PATH
-    miniprot_PATH = args.miniprot_PATH
-    ORFSoftware = args.ORFSoftware
-    debug_info = args.debug_info
-    splice_model = args.splice_model
-    main_cmd = ' '.join(sys.argv)
-    print(f'\n\033[035mCMD: {main_cmd}\033[0m\n')
-    
+## genetic code dict
 NCBI2TransDecoder_genetic_code = {1: "Universal",
                                   2: "Mitochondrial-Vertebrates",
                                   3: "Mitochondrial-Yeast",
@@ -134,6 +36,7 @@ NCBI2TransDecoder_genetic_code = {1: "Universal",
                                   30: "Peritrich",
 }
 
+## function definitions
 def check_dependencies(ORFSoftware, miniprot_PATH=None, TransDecoder_PATH=None):
     print("Check dependencies...")
     if miniprot_PATH==None:
@@ -488,6 +391,104 @@ def transcript_assembly(miniprot_output, identity, cover, prefix, query_file, pr
 
 
 ## main
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="""
+Quick genome annotation base on protein.
+
+Translate Tables/Genetic Codes:
+1: The Standard
+2: The Vertebrate Mitochondrial
+3: The Yeast Mitochondrial
+4: The Mold, Protozoan, and Coelenterate Mitochondrial Code and the Mycoplasma/Spiroplasma
+5: The Invertebrate Mitochondrial
+6: The Ciliate, Dasycladacean and Hexamita Nuclear
+9: The Echinoderm and Flatworm Mitochondrial
+10: The Euplotid Nuclear
+11: The Bacterial, Archaeal and Plant Plastid        ## TransDecoder not supported
+12: The Alternative Yeast Nuclear
+13: The Ascidian Mitochondrial
+14: The Alternative Flatworm Mitochondrial           ## TransDecoder not supported
+15: Blepharisma Macronuclear
+16: Chlorophycean Mitochondrial
+21: Trematode Mitochondrial                          
+22: Scenedesmus obliquus Mitochondrial                 
+23: Thraustochytrium Mitochondrial                   
+24: Pterobranchia Mitochondrial                      
+25: Candidate Division SR1 and Gracilibacteria       
+26: Pachysolen tannophilus Nuclear                   
+27: Karyorelict Nuclear                              ## TransDecoder not supported
+28: Condylostoma Nuclear                             ## TransDecoder not supported
+29: Mesodinium Nuclear
+30: Peritrich Nuclear
+31: Blastocrithidia Nuclear                          ## TransDecoder not supported
+32: Balanophoraceae Plastid                          ## TransDecoder not supported
+33: Cephalodiscidae Mitochondrial                    ## TransDecoder not supported
+Reference website: https://www.ncbi.nlm.nih.gov/Taxonomy/taxonomyhome.html/index.cgi?chapter=tgencodes
+""", add_help=False, epilog='Date:2026/04/28 Author:Guisen Chen Email:thecgs001@foxmail.com', formatter_class=RawTextHelpFormatter)
+    required = parser.add_argument_group('required arguments')
+    optional = parser.add_argument_group('optional arguments')
+    required.add_argument('-q', '--query', metavar='str', help='A file of query protein fasta format, supports .gz compressed files.', required=True)
+    required.add_argument('-g', '--genome', metavar='str', help='A file of genome fasta format, supports .gz compressed files.', required=True)
+    optional.add_argument('-p', '--prefix', metavar='str', default='quickprot', help='Prefix of a output file. default=quickprot')
+    optional.add_argument('-i', '--identity', metavar='float', type=float, default=0.8, help='Alignment identity (0-1). default=0.8')
+    optional.add_argument('-c', '--cover', metavar='float', default=0.6, type=float,
+                          help='minimum query cover (0-1) to report an alignment. defualt=0.6')
+    optional.add_argument('-ot', '--outs', metavar='float', type=float, default=0.95, help='miniprot optional: Output score at least bestScore (0-1). default=0.95')
+    optional.add_argument('-ps', '--preserve_the_starting_AA_number', metavar='int', type=int, default=0, 
+                          help='The query sequence is consistent with the first [INT] amino acids of the target sequence, which can effectively inhibit pseudogenes. default=0')
+    optional.add_argument('-ms', '--max_in_stop_number', metavar='int', type=str, default="inf", 
+                          help='The maximum number of allowed in-frame stop codons in the amino acids aligned (0-inf) , which can effectively inhibit pseudogenes. default=inf')
+    optional.add_argument('-an', '--align_number', metavar='int', type=int, default=0, 
+                          help='It means that only when there are [INT] protein alignments in a genomic region can the region be defaulted to be a coding region. default=0')
+    optional.add_argument('-op','--overlap', metavar='float', type=float, default=0.8, help="""If the overlap of predicted ORFs in a transcript is less than default value (0-1). default=0.8, 
+they will be dissected.""")
+    optional.add_argument('-t', '--thread', metavar='int', type=int, default=os.cpu_count(), help=f'Thread number of run miniprot sortware. defualt={os.cpu_count()}')
+    optional.add_argument('-G', '--genetic_code', metavar='int', type=int, default=1, help="Genetic code. default=1")
+    optional.add_argument('-j', '--splice_model', metavar='int', type=int, default=1, help="miniprot optional: Splice model for the target genome: 2=vertebrate/insect, 1=general, 0=none. The vertebrate/insect model considers ‘G|GTR...YYYNYAG|’ as the optimal splicing sequence and penalizes other sequences based on profiles in Sibley et al (2016). According to Irimia and Roy (2008) and Sheth et al (2006), the first ‘G’ in the donor exon and the poly-Y close to the acceptor may not be conserved in some species. The general model takes ‘|GTR...YAG|’ as the optimal sequence. Both models also slightly prefer less frequent splice sites including ‘G|GC...YAG|’ and ‘|AT...AC|’.. default=1")
+    optional.add_argument('-s', '--skip_align', action='store_true', help="Skip run miniprot step. default=False")
+    optional.add_argument('-m', '--mask', action='store_true', help="Soft-masked (dna_sm) genome convert to masked(dna_rm) genome. default=False")
+    optional.add_argument('-n', '--noclean', action='store_true', help="Do not delete intermediate files. default=False")
+    optional.add_argument('-b', '--single_best_only', action='store_true', help="""Retain only the single best orf per transcript. default=False
+It is not recommended to use it because when two reference proteins overlap during alignment, 
+it can lead to fusion during transcript assembly. If a transcript is not set with only one ORF,
+the fused ORF will be split in subsequent analysis.""")
+    optional.add_argument('-miniprot_PATH', '--miniprot_PATH', metavar='str', help="miniprot PATH default=auto.", default=None)
+    optional.add_argument('-TransDecoder_PATH', '--TransDecoder_PATH', metavar='str', help="TransDecoder PATH default=auto.", default=None)
+    optional.add_argument('-ORFSoftware', '--ORFSoftware', metavar='str', 
+                          help="Tool for selecting predicted ORFs, TransDecoder or TD2. default=TransDecoder", default="TransDecoder")
+    optional.add_argument('--debug_info', action='store_false', help="Display all software output details. default=False")
+    optional.add_argument('-h', '--help', action='help', help="Show program's help message and exit.")
+    optional.add_argument('-v', '--version', action='version', version='v1.9.0', help="Show program's version number and exit.")
+    args = parser.parse_args()
+    genetic_code = args.genetic_code
+    query_file = os.path.realpath(args.query)
+    genome_file = os.path.realpath(args.genome)
+    thread = args.thread
+    mask = args.mask
+    identity = args.identity
+    cover = args.cover
+    align_number = args.align_number
+    if args.preserve_the_starting_AA_number == "inf":
+        preserve_the_starting_AA_number = math.inf
+    else:
+        preserve_the_starting_AA_number = int(args.preserve_the_starting_AA_number)
+    if args.max_in_stop_number == 'inf':
+        in_stop_number = math.inf
+    else:
+        in_stop_number = int(args.max_in_stop_number)
+    prefix = args.prefix
+    single_best_only = args.single_best_only
+    skip_align = args.skip_align
+    noclean = args.noclean
+    outs = args.outs
+    overlap = args.overlap
+    TransDecoder_PATH = args.TransDecoder_PATH
+    miniprot_PATH = args.miniprot_PATH
+    ORFSoftware = args.ORFSoftware
+    debug_info = args.debug_info
+    splice_model = args.splice_model
+    main_cmd = ' '.join(sys.argv)
+    print(f'\n\033[035mCMD: {main_cmd}\033[0m\n')
 miniprot_PATH, TransDecoder_PATH = check_dependencies(ORFSoftware, miniprot_PATH, TransDecoder_PATH)
 
 if os.path.dirname(prefix) != '':
